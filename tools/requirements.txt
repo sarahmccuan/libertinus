@@ -1,0 +1,21 @@
+# Build and proof toolchain.
+#
+#   python -m venv .venv
+#   .venv/Scripts/python -m pip install -r tools/requirements.txt   # Windows
+#   .venv/bin/python -m pip install -r tools/requirements.txt       # everything else
+#
+# The upstream build (fontship + make) is not needed to compile a single face;
+# tools/build.py runs standalone against the .sfd sources.
+
+# build.py
+fonttools[ufo]
+ufo2ft
+ufoLib2
+sfdLib
+pcpp
+skia-pathops
+
+# proof.py, proof_matrix.py, check_overlap.py
+uharfbuzz
+freetype-py
+pillow

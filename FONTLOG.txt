@@ -45,6 +45,28 @@ https://github.com/alerque/libertinus
 ChangeLog
 ---------
 
+unreleased (GIT) <Libertinus> Version HEAD
+- Add mark attachment for Greek; combining marks previously landed at the
+  origin on every Greek base but one
+- Support macron and breve combined with accents, breathings, dialytika and
+  ypogegrammeni, for which Unicode encodes no precomposed characters
+- Use the Greek drawings of the oxia, varia and perispomeni on Greek bases;
+  the combining forms are the Latin acute, grave and tilde
+- Correct U+0342 rendering as a Latin tilde beside precomposed perispomeni
+- Add combining U+0345 to Serif Semibold, Serif Semibold Italic and Sans
+  Italic, which had only the spacing U+037A
+- Reorder a breathing and accent typed in either order, including on macron
+  and breve vowels where no precomposed character exists to fold them into
+- Fold U+0343 and U+0344 onto their canonical equivalents
+- Correct the macron and breve bar position on capital Greek vowels in Serif
+  Display
+- Anchor below-marks on Greek capital omega; the rule named U+2126 ohm sign
+- Extend Greek mark attachment to Math, which carries the same polytonic
+  coverage as Serif
+- Add tools/greek_anchors.py, deriving mark anchors per face at build time
+- Add tools/proof.py, tools/proof_matrix.py and tools/check_overlap.py for
+  proofing one face, proofing all faces together, and detecting mark collisions
+
 27 September 2024 (Caleb Maclennan) <Libertinus> Version 7.051
 - Re-typeset multilingual sample pages
 - Enable builds of autohinted static TTF variants via Fontship

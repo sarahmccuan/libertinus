@@ -1,0 +1,415 @@
+# Every Greek glyph and combination this branch touches, for tools/proof_matrix.py.
+#
+#   python tools/proof_matrix.py -p tools/proofs/greek-all.txt \
+#       -o build/proof/greek-all.png
+#
+# Rows are combinations, columns are faces. Generated rather than typed: the
+# point is that no combination is quietly missing, which a hand-written list
+# cannot promise. Regenerate if the covered set changes.
+#
+# The bases are exactly those carrying anchors -- the ones hand-set in
+# sources/features/mark_greek.fea plus the barred vowels tools/greek_anchors.py
+# derives -- and the marks are every one those anchors mention.
+
+## Alpha, lowercase
+α	# bare
+ἀ	# psili
+ἁ	# dasia
+ά	# oxia
+ὰ	# varia
+ᾶ	# perispomeni
+ἄ	# psili + oxia
+ἂ	# psili + varia
+ἆ	# psili + perispomeni
+ἅ	# dasia + oxia
+ἃ	# dasia + varia
+ἇ	# dasia + perispomeni
+ᾳ	# ypogegrammeni
+ᾴ	# oxia + ypogegrammeni
+ᾲ	# varia + ypogegrammeni
+ᾷ	# perispomeni + ypogegrammeni
+ᾄ	# psili + oxia + ypogegrammeni
+ᾅ	# dasia + oxia + ypogegrammeni
+ᾱ	# bare
+ᾱ̓	# psili
+ᾱ̔	# dasia
+ᾱ́	# oxia
+ᾱ̀	# varia
+ᾱ͂	# perispomeni
+ᾱ̓́	# psili + oxia
+ᾱ̓̀	# psili + varia
+ᾱ̓͂	# psili + perispomeni
+ᾱ̔́	# dasia + oxia
+ᾱ̔̀	# dasia + varia
+ᾱ̔͂	# dasia + perispomeni
+ᾱͅ	# ypogegrammeni
+ᾱ́ͅ	# oxia + ypogegrammeni
+ᾱ̀ͅ	# varia + ypogegrammeni
+ᾱ͂ͅ	# perispomeni + ypogegrammeni
+ᾱ̓́ͅ	# psili + oxia + ypogegrammeni
+ᾱ̔́ͅ	# dasia + oxia + ypogegrammeni
+ᾰ	# bare
+ᾰ̓	# psili
+ᾰ̔	# dasia
+ᾰ́	# oxia
+ᾰ̀	# varia
+ᾰ͂	# perispomeni
+ᾰ̓́	# psili + oxia
+ᾰ̓̀	# psili + varia
+ᾰ̓͂	# psili + perispomeni
+ᾰ̔́	# dasia + oxia
+ᾰ̔̀	# dasia + varia
+ᾰ̔͂	# dasia + perispomeni
+ᾰͅ	# ypogegrammeni
+ᾰ́ͅ	# oxia + ypogegrammeni
+ᾰ̀ͅ	# varia + ypogegrammeni
+ᾰ͂ͅ	# perispomeni + ypogegrammeni
+ᾰ̓́ͅ	# psili + oxia + ypogegrammeni
+ᾰ̔́ͅ	# dasia + oxia + ypogegrammeni
+
+## Alpha, capital
+Α	# bare
+Ἀ	# psili
+Ἁ	# dasia
+Ά	# oxia
+Ὰ	# varia
+Α͂	# perispomeni
+Ἄ	# psili + oxia
+Ἂ	# psili + varia
+Ἆ	# psili + perispomeni
+Ἅ	# dasia + oxia
+Ἃ	# dasia + varia
+Ἇ	# dasia + perispomeni
+ᾼ	# ypogegrammeni
+Άͅ	# oxia + ypogegrammeni
+Ὰͅ	# varia + ypogegrammeni
+ᾼ͂	# perispomeni + ypogegrammeni
+ᾌ	# psili + oxia + ypogegrammeni
+ᾍ	# dasia + oxia + ypogegrammeni
+Ᾱ	# bare
+Ᾱ̓	# psili
+Ᾱ̔	# dasia
+Ᾱ́	# oxia
+Ᾱ̀	# varia
+Ᾱ͂	# perispomeni
+Ᾱ̓́	# psili + oxia
+Ᾱ̓̀	# psili + varia
+Ᾱ̓͂	# psili + perispomeni
+Ᾱ̔́	# dasia + oxia
+Ᾱ̔̀	# dasia + varia
+Ᾱ̔͂	# dasia + perispomeni
+Ᾱͅ	# ypogegrammeni
+Ᾱ́ͅ	# oxia + ypogegrammeni
+Ᾱ̀ͅ	# varia + ypogegrammeni
+Ᾱ͂ͅ	# perispomeni + ypogegrammeni
+Ᾱ̓́ͅ	# psili + oxia + ypogegrammeni
+Ᾱ̔́ͅ	# dasia + oxia + ypogegrammeni
+Ᾰ	# bare
+Ᾰ̓	# psili
+Ᾰ̔	# dasia
+Ᾰ́	# oxia
+Ᾰ̀	# varia
+Ᾰ͂	# perispomeni
+Ᾰ̓́	# psili + oxia
+Ᾰ̓̀	# psili + varia
+Ᾰ̓͂	# psili + perispomeni
+Ᾰ̔́	# dasia + oxia
+Ᾰ̔̀	# dasia + varia
+Ᾰ̔͂	# dasia + perispomeni
+Ᾰͅ	# ypogegrammeni
+Ᾰ́ͅ	# oxia + ypogegrammeni
+Ᾰ̀ͅ	# varia + ypogegrammeni
+Ᾰ͂ͅ	# perispomeni + ypogegrammeni
+Ᾰ̓́ͅ	# psili + oxia + ypogegrammeni
+Ᾰ̔́ͅ	# dasia + oxia + ypogegrammeni
+
+## Iota, lowercase
+ι	# bare
+ἰ	# psili
+ἱ	# dasia
+ί	# oxia
+ὶ	# varia
+ῖ	# perispomeni
+ἴ	# psili + oxia
+ἲ	# psili + varia
+ἶ	# psili + perispomeni
+ἵ	# dasia + oxia
+ἳ	# dasia + varia
+ἷ	# dasia + perispomeni
+ϊ	# dialytika
+ΐ	# dialytika + oxia
+ῒ	# dialytika + varia
+ῑ	# bare
+ῑ̓	# psili
+ῑ̔	# dasia
+ῑ́	# oxia
+ῑ̀	# varia
+ῑ͂	# perispomeni
+ῑ̓́	# psili + oxia
+ῑ̓̀	# psili + varia
+ῑ̓͂	# psili + perispomeni
+ῑ̔́	# dasia + oxia
+ῑ̔̀	# dasia + varia
+ῑ̔͂	# dasia + perispomeni
+ῑ̈	# dialytika
+ῑ̈́	# dialytika + oxia
+ῑ̈̀	# dialytika + varia
+ῐ	# bare
+ῐ̓	# psili
+ῐ̔	# dasia
+ῐ́	# oxia
+ῐ̀	# varia
+ῐ͂	# perispomeni
+ῐ̓́	# psili + oxia
+ῐ̓̀	# psili + varia
+ῐ̓͂	# psili + perispomeni
+ῐ̔́	# dasia + oxia
+ῐ̔̀	# dasia + varia
+ῐ̔͂	# dasia + perispomeni
+ῐ̈	# dialytika
+ῐ̈́	# dialytika + oxia
+ῐ̈̀	# dialytika + varia
+
+## Iota, capital
+Ι	# bare
+Ἰ	# psili
+Ἱ	# dasia
+Ί	# oxia
+Ὶ	# varia
+Ι͂	# perispomeni
+Ἴ	# psili + oxia
+Ἲ	# psili + varia
+Ἶ	# psili + perispomeni
+Ἵ	# dasia + oxia
+Ἳ	# dasia + varia
+Ἷ	# dasia + perispomeni
+Ϊ	# dialytika
+Ϊ́	# dialytika + oxia
+Ϊ̀	# dialytika + varia
+Ῑ	# bare
+Ῑ̓	# psili
+Ῑ̔	# dasia
+Ῑ́	# oxia
+Ῑ̀	# varia
+Ῑ͂	# perispomeni
+Ῑ̓́	# psili + oxia
+Ῑ̓̀	# psili + varia
+Ῑ̓͂	# psili + perispomeni
+Ῑ̔́	# dasia + oxia
+Ῑ̔̀	# dasia + varia
+Ῑ̔͂	# dasia + perispomeni
+Ῑ̈	# dialytika
+Ῑ̈́	# dialytika + oxia
+Ῑ̈̀	# dialytika + varia
+Ῐ	# bare
+Ῐ̓	# psili
+Ῐ̔	# dasia
+Ῐ́	# oxia
+Ῐ̀	# varia
+Ῐ͂	# perispomeni
+Ῐ̓́	# psili + oxia
+Ῐ̓̀	# psili + varia
+Ῐ̓͂	# psili + perispomeni
+Ῐ̔́	# dasia + oxia
+Ῐ̔̀	# dasia + varia
+Ῐ̔͂	# dasia + perispomeni
+Ῐ̈	# dialytika
+Ῐ̈́	# dialytika + oxia
+Ῐ̈̀	# dialytika + varia
+
+## Upsilon, lowercase
+υ	# bare
+ὐ	# psili
+ὑ	# dasia
+ύ	# oxia
+ὺ	# varia
+ῦ	# perispomeni
+ὔ	# psili + oxia
+ὒ	# psili + varia
+ὖ	# psili + perispomeni
+ὕ	# dasia + oxia
+ὓ	# dasia + varia
+ὗ	# dasia + perispomeni
+ϋ	# dialytika
+ΰ	# dialytika + oxia
+ῢ	# dialytika + varia
+ῡ	# bare
+ῡ̓	# psili
+ῡ̔	# dasia
+ῡ́	# oxia
+ῡ̀	# varia
+ῡ͂	# perispomeni
+ῡ̓́	# psili + oxia
+ῡ̓̀	# psili + varia
+ῡ̓͂	# psili + perispomeni
+ῡ̔́	# dasia + oxia
+ῡ̔̀	# dasia + varia
+ῡ̔͂	# dasia + perispomeni
+ῡ̈	# dialytika
+ῡ̈́	# dialytika + oxia
+ῡ̈̀	# dialytika + varia
+ῠ	# bare
+ῠ̓	# psili
+ῠ̔	# dasia
+ῠ́	# oxia
+ῠ̀	# varia
+ῠ͂	# perispomeni
+ῠ̓́	# psili + oxia
+ῠ̓̀	# psili + varia
+ῠ̓͂	# psili + perispomeni
+ῠ̔́	# dasia + oxia
+ῠ̔̀	# dasia + varia
+ῠ̔͂	# dasia + perispomeni
+ῠ̈	# dialytika
+ῠ̈́	# dialytika + oxia
+ῠ̈̀	# dialytika + varia
+
+## Upsilon, capital
+Υ	# bare
+Υ̓	# psili
+Ὑ	# dasia
+Ύ	# oxia
+Ὺ	# varia
+Υ͂	# perispomeni
+Υ̓́	# psili + oxia
+Υ̓̀	# psili + varia
+Υ̓͂	# psili + perispomeni
+Ὕ	# dasia + oxia
+Ὓ	# dasia + varia
+Ὗ	# dasia + perispomeni
+Ϋ	# dialytika
+Ϋ́	# dialytika + oxia
+Ϋ̀	# dialytika + varia
+Ῡ	# bare
+Ῡ̓	# psili
+Ῡ̔	# dasia
+Ῡ́	# oxia
+Ῡ̀	# varia
+Ῡ͂	# perispomeni
+Ῡ̓́	# psili + oxia
+Ῡ̓̀	# psili + varia
+Ῡ̓͂	# psili + perispomeni
+Ῡ̔́	# dasia + oxia
+Ῡ̔̀	# dasia + varia
+Ῡ̔͂	# dasia + perispomeni
+Ῡ̈	# dialytika
+Ῡ̈́	# dialytika + oxia
+Ῡ̈̀	# dialytika + varia
+Ῠ	# bare
+Ῠ̓	# psili
+Ῠ̔	# dasia
+Ῠ́	# oxia
+Ῠ̀	# varia
+Ῠ͂	# perispomeni
+Ῠ̓́	# psili + oxia
+Ῠ̓̀	# psili + varia
+Ῠ̓͂	# psili + perispomeni
+Ῠ̔́	# dasia + oxia
+Ῠ̔̀	# dasia + varia
+Ῠ̔͂	# dasia + perispomeni
+Ῠ̈	# dialytika
+Ῠ̈́	# dialytika + oxia
+Ῠ̈̀	# dialytika + varia
+
+## Rho
+ρ	# bare
+ῤ	# psili
+ῥ	# dasia
+Ρ	# bare
+Ρ̓	# psili
+Ῥ	# dasia
+
+## Ypogegrammeni on the other two vowels that take it
+ῃ	# ypogegrammeni
+ῄ	# oxia + ypogegrammeni
+ῂ	# varia + ypogegrammeni
+ῇ	# perispomeni + ypogegrammeni
+ᾔ	# psili + oxia + ypogegrammeni
+ᾕ	# dasia + oxia + ypogegrammeni
+ῳ	# ypogegrammeni
+ῴ	# oxia + ypogegrammeni
+ῲ	# varia + ypogegrammeni
+ῷ	# perispomeni + ypogegrammeni
+ᾤ	# psili + oxia + ypogegrammeni
+ᾥ	# dasia + oxia + ypogegrammeni
+ῌ	# ypogegrammeni
+Ήͅ	# oxia + ypogegrammeni
+Ὴͅ	# varia + ypogegrammeni
+ῌ͂	# perispomeni + ypogegrammeni
+ᾜ	# psili + oxia + ypogegrammeni
+ᾝ	# dasia + oxia + ypogegrammeni
+ῼ	# ypogegrammeni
+Ώͅ	# oxia + ypogegrammeni
+Ὼͅ	# varia + ypogegrammeni
+ῼ͂	# perispomeni + ypogegrammeni
+ᾬ	# psili + oxia + ypogegrammeni
+ᾭ	# dasia + oxia + ypogegrammeni
+
+## Capitals that normalisation composes before a second mark arrives
+Ϊ́	# oxia
+Ϊ̀	# varia
+Ϊ͂	# perispomeni
+Ϋ́	# oxia
+Ϋ̀	# varia
+Ϋ͂	# perispomeni
+Άͅ	# ypogegrammeni
+Ὰͅ	# ypogegrammeni
+Ήͅ	# ypogegrammeni
+Ὴͅ	# ypogegrammeni
+Ώͅ	# ypogegrammeni
+Ὼͅ	# ypogegrammeni
+Άͅ	# oxia
+Ὰͅ	# varia
+ᾼ͂	# perispomeni
+ᾈ	# psili
+Ήͅ	# oxia
+ῌ͂	# perispomeni
+Ώͅ	# oxia
+ῼ͂	# perispomeni
+
+## Breathing together with a dialytika -- the breathing goes beside the letter,
+## the dialytika over it, whichever order they arrive in
+Ϊ̓	# psili
+Ϊ̔	# dasia
+Ϋ̓	# psili
+Ϋ̔	# dasia
+Ἰ̈	# dialytika
+Ἱ̈	# dialytika
+Ὠ̈	# dialytika
+Ῑ̓̈	# psili + dialytika
+Ῑ̈̓	# dialytika + psili
+Ῑ̔̈	# dasia + dialytika
+Ῡ̓̈	# psili + dialytika
+Ῡ̔̈	# dasia + dialytika
+Ῐ̓̈	# psili + dialytika
+
+## Alternate spellings -- every one of these must match its neighbour above
+ᾱ́	# precomposed macron vowel + oxia
+ᾱ́	# DECOMPOSED: alpha + combining macron + oxia
+ά̄	# accent first: oxia vowel + combining macron
+ά̄	# accent first, fully decomposed
+ῑ̓	# precomposed macron iota + psili
+ῑ̓	# DECOMPOSED -- the spelling found in real documents
+ῡ̔	# precomposed macron upsilon + dasia
+ῡ̔	# decomposed
+ᾱ̓́	# macron + psili + oxia
+ᾱ́̓	# same, accent before breathing -- ccmp must reorder
+ἀ	# U+0343 koronis, canonically equal to psili
+ΐ	# U+0344 dialytika-tonos, canonically equal to 0308 0301
+ῑ̓	# macron iota + koronis
+ῑ̈́	# macron iota + dialytika-tonos
+
+## The two accent shapes and the two perispomeni shapes, side by side
+ᾱ́ά	# macron-stack oxia next to precomposed tonos
+ᾱ̀ὰ	# macron-stack varia next to precomposed
+ᾱ͂ᾶ	# macron-stack perispomeni next to precomposed
+ῑ͂ῖ	# iota: same
+ῡ͂ῦ	# upsilon: same
+
+## In running text
+τῑμᾱ́ω	# timao
+φῡσις	# physis
+δῑκᾱ̔ν	# dikan
+μᾱ̓́την	# maten
+Ῑ̓́ταλίᾱ	# Italia
+ῑ̓ᾶται	# iatai, as the Italica document spells it

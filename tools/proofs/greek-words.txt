@@ -1,0 +1,38 @@
+# Greek macron and mark placement, in running text.
+#
+# The combination sheets check every base against every mark in isolation. This
+# file is the other half: whether those clearances read correctly at reading
+# size, inside a word, which is the check tools/check_overlap.py cannot make.
+#
+# Hand-written, unlike the exhaustive tools/proofs/greek-all.txt.
+# Every breathing here sits on a word-initial vowel, as Greek requires; a
+# medial one is not a stress case, it is a typo.
+
+## words with a macron plus an accent
+τῑμᾱ́ω	# timao
+φῡσις	# physis
+δῑκᾱ̀ν	# dikan
+νῑκᾱ͂ν	# nikan
+ῑ̓ᾶται	# iatai
+ῡ̔μεῖς	# hymeis
+ἀληθῑ́νος	# alethinos
+πρᾶγμα	# pragma
+ᾱ̔̀ς	# has
+
+## the same words in uncial
+ΤῙΜᾹ́Ω	# TIMAO
+ΦῩΣΙΣ	# PHYSIS
+ΔῙΚᾹ̀Ν	# DIKAN
+ΝῙΚᾹ͂Ν	# NIKAN
+Ῑ̓Α͂ΤΑΙ	# IATAI
+Ῡ̔ΜΕΙ͂Σ	# HYMEIS
+ἈΛΗΘῙ́ΝΟΣ	# ALETHINOS
+ΠΡΑ͂ΓΜΑ	# PRAGMA
+Ᾱ̔̀Σ	# HAS
+
+## capitals in mixed case, marks off the shoulder
+Ῑ̓́ταλίᾱ	# Italia
+Ᾱ̓ρετή	# Arete
+Ῡ̔μέρα	# Hymera
+Ὠ̈δή	# Ode
+Ϊ́σος	# Isos

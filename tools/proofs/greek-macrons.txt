@@ -1,0 +1,135 @@
+# Proof sheet for Greek macron + diacritic stacks in Libertinus.
+#
+#   python tools/proof.py -i build/LibertinusSerif-Regular.otf \
+#       -p tools/proofs/greek-macrons.txt -o build/proof
+#
+# '##' starts a section, '#' is a comment, a trailing tab + '#' annotates a cell.
+# Every sample is labelled with its codepoints in the sheet, so you can always
+# tell exactly which sequence produced a given picture.
+
+## Control: stacks that already work (no macron)
+ἀ	# psili
+ἄ	# psili + oxia
+ἅ	# dasia + oxia
+ᾶ	# perispomeni
+ᾴ	# oxia + ypogegrammeni
+ἄ	# decomposed
+ϊ	# iota dialytika
+ΐ	# dialytika + oxia
+
+## Baseline: bare macron vowels
+ᾱ
+ῑ
+ῡ
+Ᾱ
+Ῑ
+Ῡ
+
+## Macron + accent
+ᾱ́	# oxia
+ᾱ̀	# varia
+ᾱ͂	# perispomeni
+ῑ́	# oxia
+ῑ̀	# varia
+ῑ͂	# perispomeni
+ῡ́	# oxia
+ῡ̀	# varia
+ῡ͂	# perispomeni
+
+## Macron + breathing
+ᾱ̓	# psili
+ᾱ̔	# dasia
+ῑ̓	# psili
+ῑ̔	# dasia
+ῡ̓	# psili
+ῡ̔	# dasia
+
+## Macron + breathing + accent (the three-high stack)
+ᾱ̓́	# psili + oxia
+ᾱ̓̀	# psili + varia
+ᾱ̔́	# dasia + oxia
+ᾱ̔̀	# dasia + varia
+ῑ̓́	# psili + oxia
+ῑ̓̀	# psili + varia
+ῑ̔́	# dasia + oxia
+ῑ̔̀	# dasia + varia
+ῡ̓́	# psili + oxia
+ῡ̓̀	# psili + varia
+ῡ̔́	# dasia + oxia
+ῡ̔̀	# dasia + varia
+
+## Macron + dialytika
+ῑ̈
+ῑ̈́	# + oxia
+ῑ̈̀	# + varia
+ῡ̈
+ῡ̈́	# + oxia
+ῡ̈̀	# + varia
+
+## Macron + ypogegrammeni
+ᾱͅ
+ᾱ́ͅ	# oxia
+ᾱ̀ͅ	# varia
+ᾱ̓́ͅ	# psili + oxia
+ᾱ̔́ͅ	# dasia + oxia
+
+## Input-order variants (all should render identically)
+ᾱ́	# precomposed macron + oxia
+ᾱ́	# decomposed, macron first (NFD-ish)
+ά̄	# decomposed, accent first -- lookup must catch this
+ά̄	# precomposed oxia + combining macron
+ῑ̔́	# precomposed
+ῑ̔́	# decomposed
+
+## Capitals
+Ᾱ̓	# psili
+Ᾱ̔	# dasia
+Ᾱ̓́	# psili + oxia
+Ᾱ̔́	# dasia + oxia
+Ῑ̓	# psili
+Ῑ̔	# dasia
+Ῑ̓́	# psili + oxia
+Ῑ̔́	# dasia + oxia
+Ῡ̓	# psili
+Ῡ̔	# dasia
+Ῡ̓́	# psili + oxia
+Ῡ̔́	# dasia + oxia
+
+## Breve vowels (same anchor machinery)
+ᾰ́	# oxia
+ᾰ̓́	# psili + oxia
+ῐ́	# oxia
+ῐ̓́	# psili + oxia
+ῠ́	# oxia
+ῠ̓́	# psili + oxia
+
+## In context
+# Every breathing here sits on a word-initial vowel, as Greek requires. A
+# medial one exercises nothing the sections above do not already cover and
+# reads as a typo in a sheet meant to show real text.
+τῑμᾱ́ω	# timao
+φῡσις	# physis
+δῑκᾱ̀ν	# dikan
+ῑ̓ᾶται	# iatai
+ῡ̔μεῖς	# hymeis
+Ῑ̓́ταλίᾱ	# Italia, capital psili + oxia
+Ᾱ̓ρετή	# Arete, capital psili
+Ῡ̔μέρα	# Hymera, capital dasia
+
+## Capital upsilon with psili
+# U+1F58/1F5A/1F5C/1F5E are unassigned in Unicode -- word-initial upsilon takes
+# the rough breathing in Attic -- so these are the only capital-plus-breathing
+# sequences with no precomposed character behind them.
+Υ̓	# psili, bare
+Υ̓́	# psili + oxia, bare
+Υ̓̀	# psili + varia, bare
+Ῡ̓́	# psili + oxia, macron
+Ῠ̓	# psili, breve
+Ὑ	# dasia, precomposed, for comparison
+
+## Capital rho with psili
+# U+1FEC is capital rho with dasia; the psili counterpart was never encoded,
+# the same gap as capital upsilon. Lowercase has both (U+1FE4, U+1FE5).
+Ρ̓	# psili
+Ῥ	# dasia, precomposed, for comparison
+ῤ	# lowercase psili, precomposed

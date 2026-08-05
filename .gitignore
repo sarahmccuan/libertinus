@@ -1,4 +1,6 @@
 .fontship
+.venv/
+build/
 *.otf
 *.ttf
 *.woff
@@ -10,3 +12,4 @@ sources/*(Autosaved).glyphs
 sources/*_backups
 sources/*.glyphs
 sources/*.ufo
+__pycache__/

@@ -55,6 +55,11 @@ languagesystem math dflt;
 #include "sscv.fea"
 #endif
 
+# Outside the guard above on purpose: Math carries the full polytonic Greek
+# block and needs its marks anchored like any other face. See the note at the
+# head of the file.
+#include "mark_greek.fea"
+
 #ifdef SANS
 #include "liga_sans.fea"
 #else
