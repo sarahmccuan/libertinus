@@ -45,7 +45,7 @@ https://github.com/alerque/libertinus
 ChangeLog
 ---------
 
-unreleased (GIT) <Libertinus> Version HEAD
+4 August 2026 (Sarah McCuan) <Libertinus> Version 7.052
 - Add mark attachment for Greek; combining marks previously landed at the
   origin on every Greek base but one
 - Support macron and breve combined with accents, breathings, dialytika and
