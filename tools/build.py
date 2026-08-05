@@ -67,8 +67,17 @@ class Font:
 
         # Both of these add glyphs, so they have to run before the feature file
         # is preprocessed -- the HAS_* guards below test for what they produce.
-        self._make_greek_marks()
-        self._make_ypogegrammeni()
+        #
+        # Gated on the same test greek_anchors.generate() makes, so that a face
+        # with no Greek gets nothing from either of them. The capital dialytika
+        # is the one that needs saying so: it is copied from uni0308 alone, which
+        # a face can have without having a single Greek letter. Mono does, and is
+        # built with no feature file at all (see nofea in fontship.mk), so the
+        # copy shipped unencoded, referenced by no lookup, and flagged as a mark
+        # in GDEF.
+        if "alpha" in font:
+            self._make_greek_marks()
+            self._make_ypogegrammeni()
 
         if features:
             preprocessor = Preprocessor()
