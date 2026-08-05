@@ -1,12 +1,60 @@
 import argparse
 import datetime
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import ufo2ft
 import ufoLib2
 
 from fontTools import subset
+from fontTools.misc.transform import Offset
+from fontTools.pens.transformPen import TransformPen
 from io import StringIO
 from pcpp.preprocessor import Preprocessor
 from sfdLib.parser import SFDParser, CATEGORIES_KEY, MATH_KEY
+
+import greek_anchors
+
+# Greek marks are drawn differently from Latin ones, but the font only has the
+# Greek drawings as spacing characters, so a Greek base with a combining mark
+# gets the Latin shape -- and next to a precomposed vowel, which is built from
+# the spacing drawing, the two visibly disagree. The perispomeni is the worst of
+# it: U+0342 is contour for contour the Latin tildecomb, so a macron plus
+# perispomeni renders a tilde. Nothing in the glyph name says so.
+#
+# These are zero width copies of the spacing forms, positioned on top of the
+# Latin mark they stand in for so that a single set of anchors serves both.
+#
+# The measurements and the full argument are in sources/features/mark_greek.fea
+# under "Greek-shaped marks", and are deliberately not repeated here: they
+# describe outlines that can be redrawn, and two copies would drift.
+GREEK_MARKS = {
+    "acutecomb.grek": ("uni1FFD", "acutecomb"),   # oxia
+    "gravecomb.grek": ("uni1FEF", "gravecomb"),   # varia
+    "uni0342.grek":   ("uni1FC0", "uni0342"),     # perispomeni
+}
+
+# An identical copy of the dialytika, substituted in after a Greek capital.
+#
+# It exists to be a different glyph, not a different drawing. An accent
+# following a dialytika stacks on top of it, which is right for lowercase --
+# U+1FD3 is drawn that way and a barred vowel has nowhere else to put it -- and
+# wrong for a capital, where accents belong off the left shoulder. That stacking
+# is a mark-to-mark rule, and mark-to-mark cannot see what the base was, so the
+# only way to exempt capitals is to give them a dialytika the rule does not
+# name. See sources/features/mark_greek.fea.
+#
+# The name itself lives in greek_anchors, which also has to write rules about
+# this glyph; drawn here, named there, one string.
+CAPITAL_DIALYTIKA = greek_anchors.CAPITAL_DIALYTIKA
+
+# Three faces -- Serif Semibold, Serif Semibold Italic and Sans Italic -- have no
+# U+0345 at all, so an iota subscript on any of them comes out as a .notdef box.
+# They do have the spacing form U+037A, and they build their own alpha with
+# ypogegrammeni from it, which is what tells us where the combining form belongs:
+# the faces that ship a U+0345 place it in that composite at (422, 18).
+YPOGEGRAMMENI_ORIGIN = (422, 18)
 
 
 class Font:
@@ -17,15 +65,39 @@ class Font:
             ufo_kerning=False, minimal=True)
         parser.parse()
 
+        # Both of these add glyphs, so they have to run before the feature file
+        # is preprocessed -- the HAS_* guards below test for what they produce.
+        self._make_greek_marks()
+        self._make_ypogegrammeni()
+
         if features:
             preprocessor = Preprocessor()
             for d in ("italic", "sans", "display", "math"):
                 if d in filename.lower():
                     preprocessor.define(d.upper())
+            # Coverage is not uniform across the faces, so let feature files
+            # guard on a glyph rather than on a face name -- and on the glyph
+            # they actually name, which is the one synthesised above rather than
+            # the spacing character it was drawn from. Those two can disagree:
+            # _make_greek_marks needs the Latin model and a real bounding box as
+            # well as the Greek source, so a face can carry U+1FFD and still end
+            # up with no acutecomb.grek. Testing the source would then define the
+            # flag for a glyph that does not exist and fail the feature compile.
+            for name in ["uni0345"] + list(GREEK_MARKS):
+                if name in font:
+                    preprocessor.define(
+                        "HAS_%s" % name.replace(".", "_").upper())
             with open(features) as f:
                 preprocessor.parse(f)
             feafile = StringIO()
             preprocessor.write(feafile)
+            # Anchors measured from this face, ahead of the .sfd's own lookups
+            # so ours take the lower lookup indices. The preprocessed text goes
+            # in with them: the capital anchors are hand-set in mark_greek.fea,
+            # and the composed capitals are derived by shifting those, so the
+            # generator reads them from the one place they are written rather
+            # than keeping a second copy that can drift.
+            feafile.write(greek_anchors.generate(font, feafile.getvalue()))
             feafile.write(font.features.text)
             font.features.text = feafile.getvalue()
 
@@ -97,6 +169,74 @@ class Font:
         fea.append("} mark;")
 
         self._font.features.text += "\n".join(fea)
+
+    def _make_greek_marks(self):
+        font = self._font
+
+        for name, (source, model) in GREEK_MARKS.items():
+            if name in font or source not in font or model not in font:
+                continue
+            sbox = font[source].getBounds(font)
+            mbox = font[model].getBounds(font)
+            if not sbox or not mbox:
+                continue
+
+            # Line the two up centre on centre. The Greek form is taller and
+            # narrower than the Latin one, so matching centres rather than an
+            # edge means every anchor written for the Latin mark places the
+            # Greek one identically, and the difference in proportion shows up
+            # symmetrically instead of piling up at one end.
+            dx = (mbox[0] + mbox[2] - sbox[0] - sbox[2]) / 2
+            dy = (mbox[1] + mbox[3] - sbox[1] - sbox[3]) / 2
+
+            glyph = font.newGlyph(name)
+            glyph.width = 0
+            glyph.lib[CATEGORIES_KEY] = "mark"
+            font[source].draw(TransformPen(glyph.getPen(), Offset(dx, dy)))
+
+        # See CAPITAL_DIALYTIKA. A plain duplicate, drawn at the same origin, so
+        # every anchor written for uni0308 places it identically.
+        if "uni0308" in font and CAPITAL_DIALYTIKA not in font:
+            glyph = font.newGlyph(CAPITAL_DIALYTIKA)
+            glyph.width = 0
+            glyph.lib[CATEGORIES_KEY] = "mark"
+            font["uni0308"].draw(glyph.getPen())
+
+    def _make_ypogegrammeni(self):
+        """Build a combining U+0345 for faces that only have the spacing U+037A.
+
+        The position is read out of the face's own alpha-with-ypogegrammeni
+        rather than copied from another face, so a slanted or heavier design
+        gets the subscript exactly where its designer put it. Reproducing that
+        composite is the whole specification: whatever offset the drawn glyph
+        uses, the combining form has to sit that far from where U+0345 would
+        have been placed in it.
+        """
+        font = self._font
+        if "uni0345" in font or "uni037A" not in font or "uni1FB3" not in font:
+            return
+
+        # The subscript is the only part of the composite that hangs below the
+        # baseline, which makes it easy to pick out whether the face draws it or
+        # references it.
+        below = [c for c in greek_anchors.contours(font, "uni1FB3")
+                 if max(y for _, y in c) < -20]
+        if not below:
+            return
+        sub_x = min(x for c in below for x, _ in c)
+        sub_y = min(y for c in below for _, y in c)
+
+        source = font["uni037A"].getBounds(font)
+        if not source:
+            return
+        dx = sub_x - YPOGEGRAMMENI_ORIGIN[0] - source[0]
+        dy = sub_y - YPOGEGRAMMENI_ORIGIN[1] - source[1]
+
+        glyph = font.newGlyph("uni0345")
+        glyph.width = 0
+        glyph.unicodes = [0x0345]
+        glyph.lib[CATEGORIES_KEY] = "mark"
+        font["uni037A"].draw(TransformPen(glyph.getPen(), Offset(dx, dy)))
 
     def _post_process(self, otf):
         font = self._font

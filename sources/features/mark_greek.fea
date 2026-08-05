@@ -1,0 +1,476 @@
+# Mark attachment for Greek.
+#
+# The Greek block ships with essentially no attachment anchors -- one glyph
+# (upsilon) out of 343 -- so any combining mark on a Greek base lands at the
+# origin instead of over the letter. That is invisible as long as you only use
+# precomposed characters, and falls apart the moment you want a macron plus an
+# accent, because no precomposed character exists for those.
+#
+# Everything here is additive: none of these glyphs have existing coverage in
+# the mark/mkmk lookups that sfdLib generates from the .sfd anchors, so nothing
+# is positioned twice and the Latin and Hebrew behaviour is untouched.
+#
+# Coordinates were derived from the font's own conventions. Two proof sheets
+# check them: tools/proofs/greek-all.txt is exhaustive and generated,
+# greek-macrons.txt is a shorter hand-written one, and greek-words.txt puts the
+# same stacks inside real words, which is the only place a mark colliding with
+# the PRECEDING letter can show up at all. Render any of them
+# with tools/proof.py for one face or tools/proof_matrix.py for all of them, and
+# check for mark collisions with tools/check_overlap.py.
+#
+# Marks here are anchored by the .sfd's own attach height. tools/greek_anchors.py
+# anchors them by ink centre and ink bottom instead. The numbers look alike and
+# mean different things, so do not copy values between the two files. The
+# clearances below also pair with tables in that file -- see the note above its
+# CAPITAL_PAIR -- and changing one without the other moves the space to the
+# wrong side of the letter.
+#
+# This file is deliberately NOT excluded from Math, unlike the rest of what
+# gsub.fea guards with #ifndef MATH. Those exclusions say Math is not a text
+# font, which is right for locl, frac, small, case, salt, ccmp and sscv. It is
+# wrong here: Math carries the whole polytonic block, 233 codepoints, the same
+# as Serif. A face that encodes those characters and cannot put a mark on them
+# is broken however it is meant to be used. Math accents in math layout come
+# from the MATH table's top-accent attachment, which nothing here touches.
+
+# Each of these marks is drawn twice -- see the note at the foot of this file.
+# Either drawing may be the one that survives ccmp, so every rule below has to
+# cover both, and the two are interchangeable everywhere because build.py
+# centres one on the other.
+#
+# Each HAS_ flag is named for the glyph it guards, and build.py defines it by
+# testing for exactly that glyph after synthesising it. Not for the spacing
+# character it was drawn from: a face can carry U+1FFD and still fail to produce
+# an acutecomb.grek, and the flag has to follow the glyph these rules name.
+#ifdef HAS_ACUTECOMB_GREK
+@GRK_OXIA  = [acutecomb acutecomb.grek];
+#else
+@GRK_OXIA  = [acutecomb];
+#endif
+#ifdef HAS_GRAVECOMB_GREK
+@GRK_VARIA = [gravecomb gravecomb.grek];
+#else
+@GRK_VARIA = [gravecomb];
+#endif
+#ifdef HAS_UNI0342_GREK
+@GRK_PERISP = [uni0342 uni0342.grek];
+#else
+@GRK_PERISP = [uni0342];
+#endif
+
+# Capitals are positioned differently from lowercase throughout -- see the
+# anchors in grk_above_base. They are grouped by letter because how much room a
+# left-hung mark needs depends on the shape it is hanging off.
+#
+# The dialytika forms are grouped with their plain letters because everything
+# except the dialytika itself hangs off their left shoulder too. Without that
+# the marks get an anchor but no space, and the widest of them lands on the
+# letter.
+@GRK_CAPS_A = [Alpha uni1FB9 uni1FB8];
+@GRK_CAPS_I = [Iota uni1FD9 uni1FD8 Iotadieresis];
+@GRK_CAPS_U = [Upsilon uni1FE9 uni1FE8 Upsilondieresis];
+# Rho takes breathings but no accent, and the capital psili form is the
+# other hole in Unicode alongside capital upsilon's -- U+1FEC is the dasia,
+# and there is no psili counterpart. Its gap is set 22 units wider than U+1FEC's
+# own 14, which is the tightest in the font and too tight for a psili, whose
+# tail hangs toward the stem where the dasia's does not.
+@GRK_CAPS_R = [Rho];
+@GRK_BREATHING = [uni0313 uni0314];
+@GRK_ACCENT = [@GRK_OXIA @GRK_VARIA];
+# uni0308 is deliberately absent: grk_caps_room uses this class to shift a
+# capital right and open space to its LEFT, which is only wanted for marks that
+# hang there. The dialytika sits above the letter instead, so making room beside
+# it would buy nothing and add a stray sidebearing.
+@GRK_ABOVE_MARKS = [uni0313 uni0314 uni0304 @GRK_PERISP @GRK_OXIA @GRK_VARIA];
+# Both drawings of the dialytika, as a plain glyph class for matching context.
+# @GRK_DIAL is a markClass and cannot be used that way.
+@GRK_DIAL_GLYPHS = [uni0308 uni0308.cap];
+
+# Attachment points on the marks themselves. The x is each mark's ink centre and
+# the y is the .sfd's own attach height, so a base anchor below reads directly
+# as "put the centre of the mark here" and only the height is inherited.
+#
+# The .sfd x values are deliberately NOT reused. They carry a per-mark lean --
+# the grave sits left of the acute over the same Latin base -- which is correct
+# over a letter but wrong over a macron, because the macron is itself already
+# offset from the letter's centre and the two offsets compound. Over alpha that
+# put the perispomeni 97 units left of the letter centre instead of 56.
+markClass @GRK_OXIA  <anchor -160 682> @GRK_ABOVE;
+markClass @GRK_VARIA <anchor -159 683> @GRK_ABOVE;
+markClass @GRK_PERISP <anchor -247 617> @GRK_ABOVE; # perispomeni
+# The dialytika gets its own class because it is the one above-mark that does
+# not hang off the left of a capital. Everything else up there is a breathing or
+# an accent, narrow enough to sit beside the letter; the dialytika is over twice
+# as wide, and hanging it left puts its right dot on the letter -- measured at
+# 29% of the dots buried on Serif Bold's U+1FE9, and worse the bolder the face.
+# The font's own Ϊ, Ϋ and every lowercase dialytika put the dots above the
+# letter, centred, so that is what the capitals do here too. Being a separate
+# class is what lets one mark disagree with the rest about where "above" is.
+markClass [uni0308 uni0308.cap] <anchor -210 645> @GRK_DIAL;
+markClass uni0313   <anchor  -78 605> @GRK_ABOVE;   # psili
+markClass uni0314   <anchor  -73 605> @GRK_ABOVE;   # dasia
+markClass uni0304   <anchor -212 644> @GRK_ABOVE;   # macron
+# build.py synthesises U+0345 for the three faces that lack it, so this guard
+# is a backstop rather than a face test -- it only trips if that also fails.
+#ifdef HAS_UNI0345
+markClass uni0345   <anchor -182 -110> @GRK_BELOW;  # ypogegrammeni
+#endif
+
+feature mark {
+    # Make room on the left of a capital.
+    #
+    # This is the whole trick, and it is worth stating plainly because the
+    # obvious reading of the problem is wrong: a left-hung mark does not fit
+    # beside a Greek capital, and the macron is not why. Libertinus's own
+    # precomposed forms do not squeeze the mark in, they move the letter out of
+    # its way -- the Iota in U+1F38 sits at x 103..374 where a plain Iota sits
+    # at 13..284, in an advance 86 units wider, and U+1F3C moves it 240.
+    #
+    # GPOS can do the same thing: shift the capital right and widen its advance
+    # by the same amount, and the space appears in front of it. The marks move
+    # with the base, so the anchors below are all reduced by the shift to leave
+    # them where they were.
+    #
+    # Alpha needs none of this. Its marks sit above the left shoulder rather
+    # than beside the stem, and measured ink overlap there is 0% either way.
+    # Longest match first: a breathing plus an accent needs far more room than
+    # a single mark, and within a contextual lookup the first matching rule wins.
+    lookup grk_caps_room {
+        # The iota figures are all 40 units wider than the measurement alone
+        # asked for. Iota is the narrowest capital in the set, so a mark hung
+        # beside it ends up nearer the letter than the same mark does on Upsilon
+        # -- and on the dialytika forms it is the dots, not the stem, that the
+        # mark has to clear, and they reach further left than the stem does.
+        # Measured across the faces the gap ran 2 to 48 units on iota against
+        # 165 to 416 on upsilon. Each of these is matched by an equal pull-back
+        # in tools/greek_anchors.py, so the space opens between the mark and the
+        # letter rather than in front of the letter.
+        pos @GRK_CAPS_I' <280 0 276 0> @GRK_BREATHING @GRK_ACCENT;
+        pos @GRK_CAPS_U' <348 0 347 0> @GRK_BREATHING @GRK_ACCENT;
+        # An accent after a dialytika needs the same room as a lone accent: the
+        # dots sit over the letter and take none of the space beside it, but
+        # they do break the two-glyph context the rule below matches on.
+        pos @GRK_CAPS_I' <160 0 156 0> @GRK_DIAL_GLYPHS @GRK_ACCENT;
+        pos @GRK_CAPS_U' <250 0 250 0> @GRK_DIAL_GLYPHS @GRK_ACCENT;
+        # The psili needs more room than its bounding box suggests -- see
+        # CAPITAL_PSILI in tools/greek_anchors.py -- so it gets a wider
+        # allowance, and a bare accent gets its own again below.
+        pos @GRK_CAPS_I' <139 0 135 0> uni0313;
+        pos @GRK_CAPS_U' <237 0 237 0> uni0313;
+        # A bare accent on a capital needs its own allowance too, for the same
+        # reason as the psili: it is a different shape from the dasia the
+        # generic figure was set against.
+        pos @GRK_CAPS_I' <160 0 156 0> @GRK_ACCENT;
+        pos @GRK_CAPS_U' <250 0 250 0> @GRK_ACCENT;
+        # And the perispomeni needs the most of all, being the widest mark that
+        # hangs here -- 260 units against a breathing's 113. Unicode only ever
+        # encoded it on a capital paired with a breathing, so the font had never
+        # been asked to place one alone and it fell through to the generic
+        # figure below, which is the tightest in the lookup. Measured at 67
+        # units of ink past Iota's edge and 102 past Upsilon's, plus 20 of gap.
+        # Alpha is absent for the usual reason: its marks clear the arm already.
+        pos @GRK_CAPS_I' <212 0 208 0> @GRK_PERISP;
+        pos @GRK_CAPS_U' <282 0 282 0> @GRK_PERISP;
+        # Alpha is in this lookup for the perispomeni and nothing else. The note
+        # above -- that alpha needs no room because its marks clear the arm -- is
+        # true of every mark narrow enough to sit above the shoulder, and the
+        # perispomeni is not one. It also sits 50 units lower here than on a bare
+        # Alpha, because the bar takes the space above, and the diagonal has
+        # spread by then. Contact starts at 5 units; this leaves a real gap
+        # rather than the hairline that measurement alone would justify.
+        pos @GRK_CAPS_A' < 45 0  45 0> @GRK_PERISP;
+        pos @GRK_CAPS_I' <125 0 121 0> @GRK_ABOVE_MARKS;
+        pos @GRK_CAPS_U' <160 0 160 0> @GRK_ABOVE_MARKS;
+        pos @GRK_CAPS_R' <104 0  78 0> @GRK_ABOVE_MARKS;
+    } grk_caps_room;
+
+    lookup grk_above_base {
+        # Bare vowels. 645 is the house lowercase height, 850 the uppercase one.
+        # x is the average of where Libertinus puts the mark in its own
+        # precomposed forms of that letter, which is the closest thing to a
+        # house opinion about the letter's optical centre.
+        # Lowercase upsilon is omitted on purpose -- it is the one Greek glyph
+        # that already has an .sfd anchor, and adding a second would position
+        # the mark twice. Capital Upsilon has no such anchor and does need one,
+        # for a reason that is easy to miss: it is the only Greek capital whose
+        # smooth-breathing form has no precomposed character to fall back on.
+        # U+1F58, 1F5A, 1F5C and 1F5E -- every psili form of capital upsilon --
+        # are permanently unassigned in Unicode, because word-initial upsilon
+        # takes the rough breathing in Attic. So every other capital plus a
+        # breathing is quietly handled by ccmp long before it reaches these
+        # anchors, and this one is not.
+        pos base alpha      <anchor 245 645> mark @GRK_ABOVE;
+        pos base iota       <anchor 124 645> mark @GRK_ABOVE;
+        # Lowercase puts the dialytika exactly where the other above-marks go,
+        # so these repeat the anchors above rather than differing from them.
+        # Only the capitals below need it somewhere else, and those are derived
+        # per face by tools/greek_anchors.py, which can measure each letter's
+        # own centre and the height of its bar.
+        pos base alpha      <anchor 245 645> mark @GRK_DIAL;
+        pos base iota       <anchor 124 645> mark @GRK_DIAL;
+
+        # Capitals take their marks to the upper LEFT, not above -- Greek
+        # convention, and what Libertinus's own precomposed capitals do.
+        # x is the mark position in the precomposed form, less the shift that
+        # grk_caps_room applies to the letter. 678 puts a mark's ink bottom at
+        # ~544, matching U+1F38's psili at y 546..725.
+        # Alpha is the exception among the capitals: its marks sit ABOVE the
+        # left arm rather than out beside the letter, because the diagonal
+        # falls away and leaves room. U+1F08 puts the psili at x 105..212 --
+        # well inside a letter whose ink starts at 1 -- so a gap measured
+        # against the left edge is the wrong target here.
+        pos base Alpha      <anchor 150 678> mark @GRK_ABOVE;
+        pos base Iota       <anchor -64 678> mark @GRK_ABOVE;
+        pos base Upsilon    <anchor -65 678> mark @GRK_ABOVE;
+        pos base Rho        <anchor -80 678> mark @GRK_ABOVE;
+        # Eta and Omega are here only for the sake of U+1FCC and U+1FFC, which
+        # normalisation composes before an accent can arrive -- every other
+        # capital-plus-above-mark on these two letters has a precomposed form
+        # and never reaches an anchor. Measured the same way as the rest, from
+        # the mark position in the face's own U+1F28 and U+1F68 less the shift
+        # those glyphs apply to the letter; Eta lands within a unit of Iota and
+        # Upsilon, which is the check that the method is being applied the same
+        # way. They take no grk_caps_room allowance, because the sequences that
+        # reach them carry a single mark rather than a cluster.
+        pos base Eta        <anchor -65 678> mark @GRK_ABOVE;
+        pos base uni03A9    <anchor -17 678> mark @GRK_ABOVE;
+
+
+        # Same placement as the bare capitals: the macron keeps the space above
+        # to itself, the breathing goes beside the letter.
+        pos base uni1FB9    <anchor 150 628> mark @GRK_ABOVE;   # Alpha macron
+        pos base uni1FD9    <anchor -64 678> mark @GRK_ABOVE;   # Iota macron
+        pos base uni1FE9    <anchor -65 678> mark @GRK_ABOVE;   # Upsilon macron
+        pos base uni1FB8    <anchor 150 628> mark @GRK_ABOVE;   # Alpha breve
+        pos base uni1FD8    <anchor -64 678> mark @GRK_ABOVE;   # Iota breve
+        pos base uni1FE8    <anchor -65 678> mark @GRK_ABOVE;   # Upsilon breve
+    } grk_above_base;
+
+
+#ifdef HAS_UNI0345
+    # Ypogegrammeni. -110 is the house below-mark height for every base in the
+    # font, so these only differ in x. U+0345 is combining class 240, so it
+    # always sorts last and never interacts with the accents above. Kept here
+    # rather than generated: a below-mark needs no clearance from the bar above,
+    # so there is nothing face-specific to derive.
+    lookup grk_below_base {
+        pos base alpha      <anchor 249 -110> mark @GRK_BELOW;
+        pos base eta        <anchor 191 -110> mark @GRK_BELOW;
+        pos base omega      <anchor 282 -110> mark @GRK_BELOW;
+        pos base uni1FB1    <anchor 249 -110> mark @GRK_BELOW;   # alpha macron
+        pos base uni1FB0    <anchor 249 -110> mark @GRK_BELOW;   # alpha breve
+        pos base Alpha      <anchor 299 -110> mark @GRK_BELOW;
+        pos base Eta        <anchor 315 -110> mark @GRK_BELOW;
+        # uni03A9, not Omega: in these sources Omega is U+2126 OHM SIGN, which
+        # is built FROM uni03A9 rather than being it. Anchoring Omega put this
+        # rule on the ohm sign and left Greek capital omega with nothing, which
+        # stayed invisible because every Omega-plus-mark sequence that a reader
+        # would type composes to a precomposed glyph first.
+        pos base uni03A9    <anchor 301 -110> mark @GRK_BELOW;
+        pos base uni1FB9    <anchor 299 -110> mark @GRK_BELOW;   # Alpha macron
+        pos base uni1FB8    <anchor 299 -110> mark @GRK_BELOW;   # Alpha breve
+    } grk_below_base;
+#endif
+} mark;
+
+
+# Accent typed before the macron.
+#
+# U+0304 and the accents are all combining class 230, so normalisation will not
+# reorder them -- but ccmp has already folded the vowel and the accent into a
+# single precomposed glyph by the time the macron arrives, and a precomposed
+# accented vowel is not something a macron can attach to. This turns up in
+# practice when you add macrons to text that is already accented.
+#
+# GSUB cannot reorder glyphs, but a chaining context can rewrite both of them
+# in place: the accented vowel becomes the macron vowel, and the macron becomes
+# the accent. The result is the canonical <vowel-with-macron, accent> sequence
+# that the lookups above already handle.
+lookup grk_undo_tonos {
+    sub alphatonos   by uni1FB1;
+    sub iotatonos    by uni1FD1;
+    sub upsilontonos by uni1FE1;
+} grk_undo_tonos;
+
+lookup grk_undo_varia {
+    sub uni1F70 by uni1FB1;
+    sub uni1F76 by uni1FD1;
+    sub uni1F7A by uni1FE1;
+} grk_undo_varia;
+
+lookup grk_macron_to_oxia {
+    sub uni0304 by acutecomb;
+} grk_macron_to_oxia;
+
+lookup grk_macron_to_varia {
+    sub uni0304 by gravecomb;
+} grk_macron_to_varia;
+
+feature ccmp {
+    sub [alphatonos iotatonos upsilontonos]' lookup grk_undo_tonos
+        uni0304' lookup grk_macron_to_oxia;
+    sub [uni1F70 uni1F76 uni1F7A]' lookup grk_undo_varia
+        uni0304' lookup grk_macron_to_varia;
+} ccmp;
+
+
+# The bases carrying anchors that can be named at parse time: the ones hand-set
+# above plus the barred vowels tools/greek_anchors.py derives. Used twice below,
+# to reorder a mis-typed cluster and to choose the Greek drawing of a mark.
+#
+# It does NOT list the capitals normalisation composes -- Iotadieresis, U+1F38,
+# Alphatonos and the rest -- because those are enumerated from Unicode at build
+# time. greek_anchors.py adds the same substitution for them from its side, in
+# _grek_on_composed(); a base added here that also needs covering there will not
+# announce itself, so check both when extending either.
+@GRK_MARK_BASE = [alpha iota Alpha Iota Upsilon Rho
+                  uni1FB0 uni1FB1 uni1FB8 uni1FB9
+                  uni1FD0 uni1FD1 uni1FD8 uni1FD9
+                  uni1FE0 uni1FE1 uni1FE8 uni1FE9];
+
+# The Greek capitals that can carry a dialytika, for the substitution below.
+# Not @GRK_CAPS_* -- those group by silhouette for the room rules, and this
+# needs the opposite grouping.
+@GRK_CAPS_DIAL = [Alpha Eta Iota Upsilon Rho uni03A9
+                  uni1FB8 uni1FB9 uni1FD8 uni1FD9 uni1FE8 uni1FE9];
+
+# A dialytika on a capital becomes its own glyph.
+#
+# An accent following a dialytika stacks on top of it. That is right for
+# lowercase -- U+1FD3 is drawn that way, and a barred vowel has nowhere else to
+# put an accent -- and wrong for a capital, where accents hang off the left
+# shoulder like every other mark. The stacking is a mark-to-mark rule and
+# mark-to-mark cannot see the base, so the capitals get a dialytika that rule
+# does not name; the accent then finds no mark to attach to and stays where
+# mark-to-base put it, which is beside the letter.
+#
+# tools/greek_anchors.py adds the same substitution for the capitals it
+# enumerates from Unicode, which cannot be named here.
+lookup grk_dial_to_cap {
+    sub uni0308 by uni0308.cap;
+} grk_dial_to_cap;
+
+feature ccmp {
+    sub @GRK_CAPS_DIAL uni0308' lookup grk_dial_to_cap;
+} ccmp;
+
+
+# Accent typed before the breathing, on a macron or breve.
+#
+# tools/greek_anchors.py already fixes this ordering wherever Unicode encoded
+# the result: given alpha + oxia + psili it substitutes U+1F04 and the question
+# disappears. That fix is generated by walking U+1F00..1FFF for sequences with a
+# precomposed target, so its reach is exactly the set of characters Unicode
+# chose to encode -- and Unicode never encoded a macron with an accent, which is
+# the whole reason this file exists. So every macron stack falls through it.
+#
+# Falling through is not harmless. Both marks are combining class 230, so
+# normalisation is forbidden from reordering them, and nothing else was looking:
+# the two then attach to the same base at anchors written on the assumption that
+# the breathing came first, and land on top of each other. Measured at 69% ink
+# overlap on Serif Bold, the worst collision in the font.
+#
+# The trick is the one grk_undo_tonos uses above. GSUB cannot move a glyph, but
+# a chaining context can rewrite two of them in place: the accent becomes the
+# breathing and the breathing becomes the accent, which is the same thing.
+#
+# Splitting it this way -- one lookup per destination rather than one per pair --
+# is what keeps it at five lookups instead of twelve. The accent's identity
+# survives in which grk_reorder_* lookup the rule names for the second position,
+# so nothing is lost by the first substitution having already overwritten it.
+#
+# These are grk_reorder_*, and the Greek-shape lookups further down are
+# grk_shape_*, because both families want to be called "the one that turns an
+# acutecomb into an oxia" and they mean entirely different things by it. The call
+# sites differ by a single lookup name -- see the rules just below against the
+# ones at the end of this file -- so a name that could be confused between them
+# would compile clean and substitute the wrong glyph.
+lookup grk_reorder_psili  { sub acutecomb by uni0313; sub gravecomb by uni0313;
+                            sub uni0342   by uni0313; } grk_reorder_psili;
+lookup grk_reorder_dasia  { sub acutecomb by uni0314; sub gravecomb by uni0314;
+                            sub uni0342   by uni0314; } grk_reorder_dasia;
+lookup grk_reorder_oxia   { sub uni0313 by acutecomb; sub uni0314 by acutecomb; } grk_reorder_oxia;
+lookup grk_reorder_varia  { sub uni0313 by gravecomb; sub uni0314 by gravecomb; } grk_reorder_varia;
+lookup grk_reorder_perisp { sub uni0313 by uni0342;   sub uni0314 by uni0342;   } grk_reorder_perisp;
+
+# Ahead of the Greek-shape substitution below, so these only ever have to match
+# the plain drawing of each mark rather than both of them.
+feature ccmp {
+    sub @GRK_MARK_BASE acutecomb' lookup grk_reorder_psili uni0313' lookup grk_reorder_oxia;
+    sub @GRK_MARK_BASE gravecomb' lookup grk_reorder_psili uni0313' lookup grk_reorder_varia;
+    sub @GRK_MARK_BASE uni0342'   lookup grk_reorder_psili uni0313' lookup grk_reorder_perisp;
+    sub @GRK_MARK_BASE acutecomb' lookup grk_reorder_dasia uni0314' lookup grk_reorder_oxia;
+    sub @GRK_MARK_BASE gravecomb' lookup grk_reorder_dasia uni0314' lookup grk_reorder_varia;
+    sub @GRK_MARK_BASE uni0342'   lookup grk_reorder_dasia uni0314' lookup grk_reorder_perisp;
+} ccmp;
+
+# Greek-shaped marks.
+#
+# Libertinus draws each of these marks twice: once as a combining character,
+# which is a Latin drawing, and once as a spacing character, which is the Greek
+# one. Every precomposed Greek vowel in the font is built from the spacing
+# drawing, so the two are never seen side by side until a stack has to be
+# composed -- and then they are, in the same word:
+#
+#     acutecomb  159x162     U+1FFD oxia         124x183
+#     gravecomb  158x163     U+1FEF varia        128x177
+#     uni0342    278x106     U+1FC0 perispomeni  260x93
+#
+# The accents are a narrower, steeper, taller stroke. The perispomeni is not a
+# variant drawing at all: U+0342 is contour for contour the Latin tildecomb, so
+# a macron plus perispomeni renders a tilde where every precomposed form renders
+# a perispomeni. It is the most visible of the three and the easiest to miss,
+# because nothing about the glyph name suggests it is the wrong shape.
+#
+# The breathings do split, but only just -- U+0313 is 113x182 against U+1FBF's
+# 107x179, and U+0314 113x182 against U+1FFE's 110x179. Six units of width is
+# under half the difference the accents show and is left alone deliberately;
+# substituting them would cost a lookup to move a mark by three units.
+#
+# The Greek forms only exist as spacing characters, so build.py makes zero width
+# combining copies of them, centred on the Latin mark each stands in for. That
+# centring is what lets every anchor above serve both shapes unchanged.
+#
+# In practice this fires only where no precomposed character exists -- ccmp has
+# already folded ordinary accented vowels into single glyphs long before this --
+# which is to say on exactly the macron and breve stacks this file is for.
+#
+# The swap is keyed on the BASE, not on `script grek`. A script statement only
+# reaches runs the shaper tagged as Greek, and the tag is not a property of the
+# text: a Greek word inside a Latin paragraph is routinely tagged latn, and the
+# same sequence then renders with the Latin mark while the precomposed vowel
+# beside it keeps the Greek one. That is precisely the mismatch this section
+# exists to remove, so it cannot be conditioned on the thing that varies.
+# Keying on the base makes the shape follow the letter under every script tag.
+#
+# @GRK_MARK_BASE, defined above, lists exactly the bases carrying anchors, so
+# the Greek form is only ever substituted in where there is somewhere to put it.
+#
+# A breathing, a dialytika or a macron can stand between the base and the accent
+# in a legal stack, so each rule is written twice rather than once.
+@GRK_TWEEN = [uni0313 uni0314 uni0308 uni0308.cap uni0304];
+
+#ifdef HAS_ACUTECOMB_GREK
+lookup grk_shape_oxia   { sub acutecomb by acutecomb.grek; } grk_shape_oxia;
+#endif
+#ifdef HAS_GRAVECOMB_GREK
+lookup grk_shape_varia  { sub gravecomb by gravecomb.grek; } grk_shape_varia;
+#endif
+#ifdef HAS_UNI0342_GREK
+lookup grk_shape_perisp { sub uni0342 by uni0342.grek; } grk_shape_perisp;
+#endif
+
+feature ccmp {
+#ifdef HAS_ACUTECOMB_GREK
+    sub @GRK_MARK_BASE acutecomb' lookup grk_shape_oxia;
+    sub @GRK_MARK_BASE @GRK_TWEEN acutecomb' lookup grk_shape_oxia;
+#endif
+#ifdef HAS_GRAVECOMB_GREK
+    sub @GRK_MARK_BASE gravecomb' lookup grk_shape_varia;
+    sub @GRK_MARK_BASE @GRK_TWEEN gravecomb' lookup grk_shape_varia;
+#endif
+#ifdef HAS_UNI0342_GREK
+    sub @GRK_MARK_BASE uni0342' lookup grk_shape_perisp;
+    sub @GRK_MARK_BASE @GRK_TWEEN uni0342' lookup grk_shape_perisp;
+#endif
+} ccmp;
