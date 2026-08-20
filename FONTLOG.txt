@@ -45,6 +45,14 @@ https://github.com/alerque/libertinus
 ChangeLog
 ---------
 
+unreleased (GIT) <Libertinus> Version HEAD
+- Centre a Greek breathing and accent beside each other by substituting a
+  shifted copy of the mark rather than by contextual positioning, which
+  luaotfload's node renderer ignores when the target is a mark; the pair
+  collided under LuaLaTeX and rendered correctly under every other engine
+- Add those shifted copies of the breathings, accents and perispomeni, one per
+  distinct cluster offset per face
+
 4 August 2026 (Sarah McCuan) <Libertinus> Version 7.052
 - Add mark attachment for Greek; combining marks previously landed at the
   origin on every Greek base but one
