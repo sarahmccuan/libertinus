@@ -748,6 +748,183 @@ def _capital_dialytika(font, hand, marks, cls):
     return rows
 
 
+def _pair_shifts(font, marks, ink):
+    """Every context in which a mark has to move sideways from its own anchor.
+
+    Returns (backtrack, mark, dx, lookahead) tuples in the order they must be
+    tested: within a contextual lookup the first matching rule wins, so the
+    longer clusters are written before the rules that would also match a prefix
+    of them.
+
+    These used to be contextual GPOS -- `pos br' <dx 0 0 0> acc` -- which is the
+    direct way to say it and does not work: luaotfload's node renderer, the
+    default for LuaLaTeX, silently drops a chained contextual GPOS adjustment
+    when the target is a mark. It applies the same construct on a base glyph
+    (grk_caps_room in mark_greek.fea still relies on that), and it applies
+    chained contextual GSUB on marks, so what is left is to say it as a
+    substitution: swap the mark for a variant drawn dx to the left and let plain
+    mark-to-base put it there. See the note above generate() for the numbers.
+    """
+    out = []
+
+    def rule(back, mark, dx, ahead):
+        out.append((tuple(back), mark, int(round(dx)), tuple(ahead)))
+
+    for cap, dx in sorted(CAPITAL_PAIR.items()):
+        if cap not in font:
+            continue
+        for br in BREATHINGS:
+            if br not in marks:
+                continue
+            for acc in ACCENTS:
+                if acc not in marks:
+                    continue
+                v = CAPITAL_PAIR_VARIA[cap] if MARKS[acc] == "varia" else dx
+                rule([cap], br, v, [acc])
+    # Same idea for a perispomeni stacked on a breathing, which is the only
+    # cluster tall enough to reach a capital's bar. Written before the single
+    # breathing rules below for the same first-match-wins reason.
+    for cap, dx in sorted(CAPITAL_PERISPOMENI.items()):
+        if cap not in font:
+            continue
+        for br in BREATHINGS:
+            if br not in marks:
+                continue
+            for per in PERISPOMENI:
+                if per in marks:
+                    rule([cap], br, dx, [per])
+
+    # An accent after a dialytika. Three glyphs, so it has to be written
+    # separately from the two-glyph rule further down -- and it pairs with a
+    # matching three-glyph allowance in grk_caps_room, because the shift there
+    # moves the letter and the mark together and only this pulls the mark back.
+    for cap, dx in sorted(CAPITAL_ACCENT.items()):
+        if cap not in font:
+            continue
+        for dial in ("uni0308", CAPITAL_DIALYTIKA):
+            if dial not in marks:
+                continue
+            for acc in ACCENTS:
+                if acc not in marks:
+                    continue
+                v = CAPITAL_ACCENT_OXIA.get(cap, dx) if MARKS[acc] == "oxia" else dx
+                rule([cap, dial], acc, v, [])
+
+    for br in BREATHINGS:
+        if br not in marks:
+            continue
+        bw = ink[br][2] - ink[br][0]
+        for acc in ACCENTS:
+            if acc not in marks:
+                continue
+            aw = ink[acc][2] - ink[acc][0]
+            gap = GAP_IN_CLUSTER[MARKS[acc]]
+            shift = (bw + gap + aw) / 2 - bw / 2
+            rule([], br, -round(shift), [acc])
+    # Single breathing on a capital. These come after the cluster rules: within
+    # a contextual lookup the first matching rule wins, so the pairs are already
+    # claimed by the time we get here.
+    for cap, dx in sorted(CAPITAL_PSILI.items()):
+        if cap in font and "uni0313" in marks:
+            rule([cap], "uni0313", dx, [])
+    for cap, dx in sorted(CAPITAL_ACCENT.items()):
+        if cap not in font:
+            continue
+        for acc in ACCENTS:
+            if acc in marks:
+                v = CAPITAL_ACCENT_OXIA.get(cap, dx) if MARKS[acc] == "oxia" else dx
+                rule([cap], acc, v, [])
+    for cap, dx in sorted(CAPITAL_PERISPOMENI_SOLO.items()):
+        if cap not in font:
+            continue
+        for per in PERISPOMENI:
+            if per in marks:
+                rule([cap], per, dx, [])
+    return out
+
+
+def _mark_ink(font):
+    """The mark glyphs this face has, and their bounding boxes, or (None, None).
+
+    Same test generate() makes, so the two agree about which faces get Greek
+    treatment at all.
+    """
+    if "alpha" not in font:
+        return None, None
+    marks = {n: r for n, r in MARKS.items() if n in font}
+    if not marks or any(_bbox(font, n) is None for n in marks):
+        return None, None
+    return marks, {n: _bbox(font, n) for n in marks}
+
+
+def pair_variants(font):
+    """{mark: {dx: variant name}} -- every shifted copy this face needs.
+
+    Wanted before the feature file is preprocessed, because the classes that
+    match a breathing as *context* have to name the variants too, and a glyph
+    class cannot be extended after it is defined. See shift_classes().
+    """
+    marks, ink = _mark_ink(font)
+    if not marks:
+        return {}
+    shifts = {}
+    for _, mark, dx, _ in _pair_shifts(font, marks, ink):
+        shifts.setdefault(mark, {}).setdefault(dx, variant_name(mark, dx))
+    return shifts
+
+
+# The role each shifted class covers, and the class name mark_greek.fea knows it
+# by. Named per role rather than per glyph because that is how the hand-written
+# rules already think -- an oxia is an oxia whichever drawing survived ccmp.
+SHIFT_CLASSES = {
+    "oxia": "@GRK_SH_OXIA", "varia": "@GRK_SH_VARIA",
+    "perispomeni": "@GRK_SH_PERISP",
+    "psili": "@GRK_SH_PSILI", "dasia": "@GRK_SH_DASIA",
+}
+
+
+def shift_classes(font):
+    """Glyph classes naming each mark together with its shifted copies.
+
+    Written ahead of mark_greek.fea rather than after it, which is the whole
+    reason this is a separate function: that file matches a breathing and an
+    accent as context when it makes room beside a capital, and after the
+    substitution the glyph sitting there is a variant. A class that did not name
+    it would quietly stop matching, the capital would keep its narrow advance,
+    and the marks would pile onto the letter.
+
+    Each class carries the originals as well, so it is a drop-in replacement for
+    the plain list it stands in for.
+    """
+    marks, _ = _mark_ink(font)
+    if not marks:
+        return ""
+    shifts = pair_variants(font)
+    L = ["# " + "-" * 70,
+         "# Marks and their shifted copies, from tools/greek_anchors.py.",
+         "# " + "-" * 70]
+    for role in sorted(set(SHIFT_CLASSES)):
+        members = []
+        for n in sorted(marks):
+            if MARKS[n] != role:
+                continue
+            members.append(n)
+            members += [shifts[n][d] for d in sorted(shifts.get(n, {}))]
+        if members:
+            L.append("%s = [%s];" % (SHIFT_CLASSES[role], " ".join(members)))
+    return "\n".join(L) + "\n\n"
+
+
+def variant_name(mark, dx):
+    """The glyph name for `mark` drawn `dx` units to the left.
+
+    Named here rather than in build.py for the same reason CAPITAL_DIALYTIKA is:
+    the rules that name the glyph and the code that draws it have to agree, so
+    the string is written once.
+    """
+    return "%s.p%d" % (mark, -dx)
+
+
 def generate(font, fea=""):
     """Return the .fea text for this face, or "" if it has no Greek to anchor.
 
@@ -784,14 +961,28 @@ def generate(font, fea=""):
          "# Rebuild rather than edit; the clearances live in that file.",
          "# " + "-" * 70, ""]
 
+    # Worked out before the anchors because the variants join their original's
+    # mark class. build.py has already drawn them -- it needs the same list
+    # earlier still, to write the context classes ahead of mark_greek.fea.
+    pair_rules = _pair_shifts(font, marks, ink)
+    shifts = pair_variants(font)
+
     # One class per mark, anchored at its ink centre and ink bottom, so a base
     # anchor below reads as "put the bottom centre of the mark here". One class
     # per mark rather than one shared class is what lets each base/mark pair
     # keep its own clearance.
+    #
+    # A shifted variant joins its original's class and takes the original's
+    # anchor, not its own ink centre: the drawing has already moved, so reading
+    # the anchor off it a second time would move it twice. Sharing the class is
+    # also what keeps every base rule below written once instead of once per
+    # variant.
     for n in sorted(marks):
         b = ink[n]
+        names = [n] + [shifts[n][d] for d in sorted(shifts.get(n, {}))]
+        target = names[0] if len(names) == 1 else "[%s]" % " ".join(names)
         L.append("markClass %-16s <anchor %5d %5d> %s;"
-                 % (n, round(_cx(b)), round(b[1]), cls[n]))
+                 % (target, round(_cx(b)), round(b[1]), cls[n]))
 
     def base_rule(base, mark, x, bottom):
         return ("    pos base %-10s <anchor %5d %5d> mark %s;"
@@ -818,90 +1009,29 @@ def generate(font, fea=""):
     if composed:
         L += ["", "  lookup grkgen_composed {"] + composed + ["  } grkgen_composed;"]
 
-    # Centring a breathing-and-accent pair. GPOS cannot centre a cluster, so the
-    # breathing shifts left and the accent sits beside it -- and both halves are
-    # a function of the accent's width, which is exactly what differs by face.
-    pair = []
-    for cap, dx in sorted(CAPITAL_PAIR.items()):
-        if cap not in font:
-            continue
-        for br in BREATHINGS:
-            if br not in marks:
-                continue
-            for acc in ACCENTS:
-                if acc not in marks:
-                    continue
-                v = CAPITAL_PAIR_VARIA[cap] if MARKS[acc] == "varia" else dx
-                pair.append("    pos %s %s' <%d 0 0 0> %s;" % (cap, br, v, acc))
-    # Same idea for a perispomeni stacked on a breathing, which is the only
-    # cluster tall enough to reach a capital's bar. Written before the single
-    # breathing rules below for the same first-match-wins reason.
-    for cap, dx in sorted(CAPITAL_PERISPOMENI.items()):
-        if cap not in font:
-            continue
-        for br in BREATHINGS:
-            if br not in marks:
-                continue
-            for per in PERISPOMENI:
-                if per in marks:
-                    pair.append("    pos %s %s' <%d 0 0 0> %s;" % (cap, br, dx, per))
-
-    # An accent after a dialytika. Three glyphs, so it has to be written
-    # separately from the two-glyph rule further down -- and it pairs with a
-    # matching three-glyph allowance in grk_caps_room, because the shift there
-    # moves the letter and the mark together and only this pulls the mark back.
-    for cap, dx in sorted(CAPITAL_ACCENT.items()):
-        if cap not in font:
-            continue
-        for dial in ("uni0308", CAPITAL_DIALYTIKA):
-            if dial not in marks:
-                continue
-            for acc in ACCENTS:
-                if acc not in marks:
-                    continue
-                v = CAPITAL_ACCENT_OXIA.get(cap, dx) if MARKS[acc] == "oxia" else dx
-                pair.append("    pos %s %s %s' <%d 0 0 0>;" % (cap, dial, acc, v))
-
-    for br in BREATHINGS:
-        if br not in marks:
-            continue
-        bw = ink[br][2] - ink[br][0]
-        for acc in ACCENTS:
-            if acc not in marks:
-                continue
-            aw = ink[acc][2] - ink[acc][0]
-            gap = GAP_IN_CLUSTER[MARKS[acc]]
-            shift = (bw + gap + aw) / 2 - bw / 2
-            pair.append("    pos %s' <%d 0 0 0> %s;" % (br, -round(shift), acc))
-    # Single breathing on a capital. These come after the cluster rules: within
-    # a contextual lookup the first matching rule wins, so the pairs are already
-    # claimed by the time we get here.
-    for cap, dx in sorted(CAPITAL_PSILI.items()):
-        if cap in font and "uni0313" in marks:
-            pair.append("    pos %s uni0313' <%d 0 0 0>;" % (cap, dx))
-    for cap, dx in sorted(CAPITAL_ACCENT.items()):
-        if cap not in font:
-            continue
-        for acc in ACCENTS:
-            if acc in marks:
-                v = CAPITAL_ACCENT_OXIA.get(cap, dx) if MARKS[acc] == "oxia" else dx
-                pair.append("    pos %s %s' <%d 0 0 0>;" % (cap, acc, v))
-    for cap, dx in sorted(CAPITAL_PERISPOMENI_SOLO.items()):
-        if cap not in font:
-            continue
-        for per in PERISPOMENI:
-            if per in marks:
-                pair.append("    pos %s %s' <%d 0 0 0>;" % (cap, per, dx))
-    if pair:
-        L += ["", "  lookup grkgen_pair {"] + pair + ["  } grkgen_pair;"]
+    # The rules that centre a breathing-and-accent cluster are no longer GPOS;
+    # they are emitted as substitutions further down. See _pair_shifts.
     L.append("} mark;")
 
     # --- mark to mark ------------------------------------------------------
     L += ["", "feature mkmk {", "  lookup grkgen_mkmk {"]
 
     def mark_rule(base, mark, x, y):
-        return ("    pos mark %-10s <anchor %5d %5d> mark %s;"
-                % (base, round(x), round(y), cls[mark]))
+        """The mark-to-mark rule for `base`, plus one per shifted variant of it.
+
+        A variant is the same drawing moved dx sideways, and it keeps its
+        original's mark-to-base anchor, so its own origin lands where the
+        original's would and everything measured in its glyph space has moved
+        with the ink. The anchor an accent attaches to is measured in exactly
+        that space, so it moves by the same dx -- otherwise the breathing slides
+        out from under the accent instead of carrying it along.
+        """
+        rules = [("    pos mark %-10s <anchor %5d %5d> mark %s;"
+                  % (base, round(x), round(y), cls[mark]))]
+        for d in sorted(shifts.get(base, {})):
+            rules.append("    pos mark %-10s <anchor %5d %5d> mark %s;"
+                         % (shifts[base][d], round(x) + d, round(y), cls[mark]))
+        return rules
 
     for br in BREATHINGS:
         if br not in marks:
@@ -915,19 +1045,19 @@ def generate(font, fea=""):
             # centres level: the two shapes differ in height, and aligning an
             # edge instead shows the whole difference at one end.
             mid = (b[1] + b[3]) / 2
-            L.append(mark_rule(br, acc, _cx(b) + step, mid - (a[3] - a[1]) / 2))
+            L.extend(mark_rule(br, acc, _cx(b) + step, mid - (a[3] - a[1]) / 2))
         over = _over_breathing(font, br)
         lean, gap = over if over else (0, GAP_OVER_BREATHING)
         for per in PERISPOMENI:
             if per in marks:
-                L.append(mark_rule(br, per, _cx(b) + lean, b[3] + gap))
+                L.extend(mark_rule(br, per, _cx(b) + lean, b[3] + gap))
 
     # An accent over a macron: centred on the bar.
     if "uni0304" in marks:
         m = ink["uni0304"]
         for acc in ACCENTS:
             if acc in marks:
-                L.append(mark_rule("uni0304", acc, _cx(m),
+                L.extend(mark_rule("uni0304", acc, _cx(m),
                                    m[3] + GAP_OVER_BAR[MARKS[acc]]))
 
     # An accent over a dialytika, read off the face's own precomposed stacks:
@@ -937,7 +1067,7 @@ def generate(font, fea=""):
         d = ink["uni0308"]
         for role, (lean, rise) in sorted(_dialytika_offsets(font).items()):
             for n in [n for n in marks if MARKS[n] == role]:
-                L.append(mark_rule("uni0308", n, _cx(d) + lean, d[3] + rise))
+                L.extend(mark_rule("uni0308", n, _cx(d) + lean, d[3] + rise))
     L += ["  } grkgen_mkmk;", "} mkmk;"]
 
     # Substitutions. These are GSUB and run before any of the positioning above,
@@ -946,12 +1076,35 @@ def generate(font, fea=""):
     # before it only ever match the plain drawing of a mark.
     equiv, reord = _equivalents(font), _reordered(font)
     grek = _grek_on_composed(font, marks)
-    if equiv or reord or grek:
+
+    # One lookup per distinct shift rather than one per mark: several marks move
+    # by the same amount in different contexts, and a single-substitution lookup
+    # can carry all of them because each names its own destination.
+    for dx in sorted({d for _, _, d, _ in pair_rules}):
+        body = ["    sub %-16s by %s;" % (m, shifts[m][dx])
+                for m in sorted(shifts) if dx in shifts[m]]
+        name = "grkgen_shift_%d" % -dx
+        L += ["", "lookup %s {" % name] + body + ["} %s;" % name]
+
+    def pair_sub(back, mark, dx, ahead):
+        ctx = " ".join(list(back) + ["%s'" % mark, "lookup grkgen_shift_%d" % -dx]
+                       + list(ahead))
+        return "    sub %s;" % ctx
+
+    pairs = [pair_sub(*r) for r in pair_rules]
+
+    if equiv or reord or grek or pairs:
         L += ["", "feature ccmp {"]
         if equiv:
             L += ["  lookup grkgen_equiv {"] + equiv + ["  } grkgen_equiv;"]
         if reord:
             L += ["  lookup grkgen_reorder {"] + reord + ["  } grkgen_reorder;"]
         L += grek
+        # Last, and after the drawing swaps above on purpose. Which variant a
+        # mark takes depends on the width of the accent beside it, and the two
+        # drawings of an accent are different widths, so a rule that matched
+        # before the swap would pick the shift measured for the other one.
+        if pairs:
+            L += ["  lookup grkgen_pair {"] + pairs + ["  } grkgen_pair;"]
         L.append("} ccmp;")
     return "\n".join(L) + "\n"

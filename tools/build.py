@@ -78,6 +78,7 @@ class Font:
         if "alpha" in font:
             self._make_greek_marks()
             self._make_ypogegrammeni()
+            self._make_shifted_marks()
 
         if features:
             preprocessor = Preprocessor()
@@ -96,17 +97,29 @@ class Font:
                 if name in font:
                     preprocessor.define(
                         "HAS_%s" % name.replace(".", "_").upper())
+            # mark_greek.fea matches a breathing and an accent as context, and
+            # after the pair substitution the glyph in that position is a
+            # shifted variant. A glyph class cannot be extended once defined, so
+            # the classes naming those variants have to be in hand before that
+            # file is read rather than appended with the rest of the generated
+            # anchors below.
+            classes = greek_anchors.shift_classes(font)
+            if classes:
+                preprocessor.define("HAS_PAIR_SHIFTS")
             with open(features) as f:
                 preprocessor.parse(f)
+            pre = StringIO()
+            preprocessor.write(pre)
             feafile = StringIO()
-            preprocessor.write(feafile)
+            feafile.write(classes)
+            feafile.write(pre.getvalue())
             # Anchors measured from this face, ahead of the .sfd's own lookups
             # so ours take the lower lookup indices. The preprocessed text goes
             # in with them: the capital anchors are hand-set in mark_greek.fea,
             # and the composed capitals are derived by shifting those, so the
             # generator reads them from the one place they are written rather
             # than keeping a second copy that can drift.
-            feafile.write(greek_anchors.generate(font, feafile.getvalue()))
+            feafile.write(greek_anchors.generate(font, pre.getvalue()))
             feafile.write(font.features.text)
             font.features.text = feafile.getvalue()
 
@@ -210,6 +223,34 @@ class Font:
             glyph.width = 0
             glyph.lib[CATEGORIES_KEY] = "mark"
             font["uni0308"].draw(glyph.getPen())
+
+    def _make_shifted_marks(self):
+        """A copy of each mark that has to move sideways in some context.
+
+        Centring a breathing-and-accent cluster means moving one mark sideways
+        from where its own anchor puts it, which is a contextual question -- and
+        the direct way to answer it, a contextual GPOS adjustment on the mark,
+        is silently ignored by luaotfload's node renderer. So the context is
+        asked in GSUB instead, and what it selects is one of these: the shift is
+        already in the outline, and plain mark-to-base does the rest.
+
+        The anchor is deliberately not moved to match. greek_anchors keeps the
+        original's anchor on the variant, so the glyph's origin still lands
+        where the unshifted mark's would and only the ink has moved -- which is
+        also what carries the accent along, since the anchor it attaches to is
+        measured in this glyph's space. See variant_name().
+        """
+        font = self._font
+        for source, by_dx in greek_anchors.pair_variants(font).items():
+            if source not in font:
+                continue
+            for dx, name in by_dx.items():
+                if name in font:
+                    continue
+                glyph = font.newGlyph(name)
+                glyph.width = 0
+                glyph.lib[CATEGORIES_KEY] = "mark"
+                font[source].draw(TransformPen(glyph.getPen(), Offset(dx, 0)))
 
     def _make_ypogegrammeni(self):
         """Build a combining U+0345 for faces that only have the spacing U+037A.

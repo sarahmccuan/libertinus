@@ -42,6 +42,19 @@
 # testing for exactly that glyph after synthesising it. Not for the spacing
 # character it was drawn from: a face can carry U+1FFD and still fail to produce
 # an acutecomb.grek, and the flag has to follow the glyph these rules name.
+#
+# HAS_PAIR_SHIFTS says greek_anchors has written a @GRK_SH_* class for each of
+# these roles, naming both drawings of the mark AND every shifted copy of them.
+# Taking that class rather than listing the drawings here is what keeps the
+# context rules below matching after the pair substitution has run: by the time
+# grk_caps_room looks for a breathing beside a capital, the glyph sitting there
+# is a variant, and a class that named only the original would silently stop
+# matching -- leaving the capital its narrow advance and the marks on the letter.
+#ifdef HAS_PAIR_SHIFTS
+@GRK_OXIA  = [@GRK_SH_OXIA];
+@GRK_VARIA = [@GRK_SH_VARIA];
+@GRK_PERISP = [@GRK_SH_PERISP];
+#else
 #ifdef HAS_ACUTECOMB_GREK
 @GRK_OXIA  = [acutecomb acutecomb.grek];
 #else
@@ -56,6 +69,7 @@
 @GRK_PERISP = [uni0342 uni0342.grek];
 #else
 @GRK_PERISP = [uni0342];
+#endif
 #endif
 
 # Capitals are positioned differently from lowercase throughout -- see the
@@ -75,13 +89,19 @@
 # own 14, which is the tightest in the font and too tight for a psili, whose
 # tail hangs toward the stem where the dasia's does not.
 @GRK_CAPS_R = [Rho];
+#ifdef HAS_PAIR_SHIFTS
+@GRK_PSILI = [@GRK_SH_PSILI];
+@GRK_BREATHING = [@GRK_SH_PSILI @GRK_SH_DASIA];
+#else
+@GRK_PSILI = [uni0313];
 @GRK_BREATHING = [uni0313 uni0314];
+#endif
 @GRK_ACCENT = [@GRK_OXIA @GRK_VARIA];
 # uni0308 is deliberately absent: grk_caps_room uses this class to shift a
 # capital right and open space to its LEFT, which is only wanted for marks that
 # hang there. The dialytika sits above the letter instead, so making room beside
 # it would buy nothing and add a stray sidebearing.
-@GRK_ABOVE_MARKS = [uni0313 uni0314 uni0304 @GRK_PERISP @GRK_OXIA @GRK_VARIA];
+@GRK_ABOVE_MARKS = [@GRK_BREATHING uni0304 @GRK_PERISP @GRK_OXIA @GRK_VARIA];
 # Both drawings of the dialytika, as a plain glyph class for matching context.
 # @GRK_DIAL is a markClass and cannot be used that way.
 @GRK_DIAL_GLYPHS = [uni0308 uni0308.cap];
@@ -107,8 +127,15 @@ markClass @GRK_PERISP <anchor -247 617> @GRK_ABOVE; # perispomeni
 # letter, centred, so that is what the capitals do here too. Being a separate
 # class is what lets one mark disagree with the rest about where "above" is.
 markClass [uni0308 uni0308.cap] <anchor -210 645> @GRK_DIAL;
+# The shifted copies take the same anchor as the mark they were drawn from: the
+# shift is already in the outline, so reading it again here would apply it twice.
+#ifdef HAS_PAIR_SHIFTS
+markClass @GRK_SH_PSILI <anchor  -78 605> @GRK_ABOVE;   # psili
+markClass @GRK_SH_DASIA <anchor  -73 605> @GRK_ABOVE;   # dasia
+#else
 markClass uni0313   <anchor  -78 605> @GRK_ABOVE;   # psili
 markClass uni0314   <anchor  -73 605> @GRK_ABOVE;   # dasia
+#endif
 markClass uni0304   <anchor -212 644> @GRK_ABOVE;   # macron
 # build.py synthesises U+0345 for the three faces that lack it, so this guard
 # is a backstop rather than a face test -- it only trips if that also fails.
@@ -155,8 +182,8 @@ feature mark {
         # The psili needs more room than its bounding box suggests -- see
         # CAPITAL_PSILI in tools/greek_anchors.py -- so it gets a wider
         # allowance, and a bare accent gets its own again below.
-        pos @GRK_CAPS_I' <139 0 135 0> uni0313;
-        pos @GRK_CAPS_U' <237 0 237 0> uni0313;
+        pos @GRK_CAPS_I' <139 0 135 0> @GRK_PSILI;
+        pos @GRK_CAPS_U' <237 0 237 0> @GRK_PSILI;
         # A bare accent on a capital needs its own allowance too, for the same
         # reason as the psili: it is a different shape from the dasia the
         # generic figure was set against.
