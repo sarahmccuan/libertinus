@@ -45,7 +45,7 @@ https://github.com/alerque/libertinus
 ChangeLog
 ---------
 
-unreleased (GIT) <Libertinus> Version HEAD
+20 August 2026 (Sarah McCuan) <Libertinus> Version 7.053
 - Centre a Greek breathing and accent beside each other by substituting a
   shifted copy of the mark rather than by contextual positioning, which
   luaotfload's node renderer ignores when the target is a mark; the pair
