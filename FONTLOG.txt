@@ -45,7 +45,7 @@ https://github.com/alerque/libertinus
 ChangeLog
 ---------
 
-unreleased (GIT) <Libertinus> Version HEAD
+30 August 2026 (Sarah McCuan) <Libertinus> Version 7.054
 - Compose a Greek dichronon with its length mark in ccmp rather than relying on
   the shaper to have done it; every rule in the Greek mark handling is written
   for the composed glyph, and DirectWrite reaches GSUB with the vowel and both
