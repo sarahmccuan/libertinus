@@ -45,6 +45,15 @@ https://github.com/alerque/libertinus
 ChangeLog
 ---------
 
+unreleased (GIT) <Libertinus> Version HEAD
+- Compose a Greek dichronon with its length mark in ccmp rather than relying on
+  the shaper to have done it; every rule in the Greek mark handling is written
+  for the composed glyph, and DirectWrite reaches GSUB with the vowel and both
+  marks still separate, so a macron and a breathing attached to the bare vowel
+  at the same anchor and were drawn on top of each other in Word
+- Reorder a breathing typed before the macron, in both the composed and the
+  separate form of the sequence
+
 20 August 2026 (Sarah McCuan) <Libertinus> Version 7.053
 - Centre a Greek breathing and accent beside each other by substituting a
   shifted copy of the mark rather than by contextual positioning, which
