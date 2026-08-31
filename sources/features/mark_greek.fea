@@ -301,6 +301,125 @@ feature mark {
 } mark;
 
 
+# Breathing typed before the length mark.
+#
+# The third member of a family this file already has two of: grk_undo_tonos
+# takes an accent typed before the macron, grk_reorder_* takes an accent typed
+# before the breathing, and this takes a breathing typed before the macron.
+# All three are the same mis-ordering -- the mark that belongs closest to the
+# letter arrives last -- and all three are fixed by rewriting the pair in place
+# rather than moving anything, which GSUB cannot do.
+#
+# It has to be written twice because the two shapers present it differently.
+# Where normalisation has run, the vowel and the breathing are already one
+# precomposed glyph and the macron is stranded on it, so the rewrite is
+# <breathed vowel, macron> -> <macron vowel, breathing>. Where it has not, all
+# three are still separate and the rewrite is the plain swap of the two marks,
+# whose output then feeds grk_compose_length below exactly as a correctly typed
+# sequence would. Both roads end at <macron vowel, breathing>, which is the form
+# every anchor here is written for.
+#
+# The breve is deliberately not covered, matching grk_undo_tonos: a vowel marked
+# short and then given a breathing is not a stack anyone types, and adding it
+# would double the lookups to cover it.
+@GRK_LENGTH_VOWEL = [alpha iota upsilon Alpha Iota Upsilon];
+
+lookup grk_swap_to_macron { sub uni0313 by uni0304;
+                            sub uni0314 by uni0304; } grk_swap_to_macron;
+lookup grk_swap_to_psili  { sub uni0304 by uni0313; } grk_swap_to_psili;
+lookup grk_swap_to_dasia  { sub uni0304 by uni0314; } grk_swap_to_dasia;
+
+# U+1F58 is absent on purpose: Unicode never assigned a capital upsilon with
+# psili, which is the same hole the capital Rho note above describes. Every
+# other breathed dichronon has a precomposed form and is listed.
+lookup grk_unbreathe_psili {
+    sub uni1F00 by uni1FB1;   # alpha psili
+    sub uni1F30 by uni1FD1;   # iota psili
+    sub uni1F50 by uni1FE1;   # upsilon psili
+    sub uni1F08 by uni1FB9;   # Alpha psili
+    sub uni1F38 by uni1FD9;   # Iota psili
+} grk_unbreathe_psili;
+
+lookup grk_unbreathe_dasia {
+    sub uni1F01 by uni1FB1;   # alpha dasia
+    sub uni1F31 by uni1FD1;   # iota dasia
+    sub uni1F51 by uni1FE1;   # upsilon dasia
+    sub uni1F09 by uni1FB9;   # Alpha dasia
+    sub uni1F39 by uni1FD9;   # Iota dasia
+    sub uni1F59 by uni1FE9;   # Upsilon dasia
+} grk_unbreathe_dasia;
+
+# Ahead of grk_compose_length, which the unnormalised form is handed on to.
+feature ccmp {
+    sub @GRK_LENGTH_VOWEL uni0313' lookup grk_swap_to_macron
+                          uni0304' lookup grk_swap_to_psili;
+    sub @GRK_LENGTH_VOWEL uni0314' lookup grk_swap_to_macron
+                          uni0304' lookup grk_swap_to_dasia;
+
+    sub [uni1F00 uni1F30 uni1F50 uni1F08 uni1F38]' lookup grk_unbreathe_psili
+        uni0304' lookup grk_swap_to_psili;
+    sub [uni1F01 uni1F31 uni1F51 uni1F09 uni1F39 uni1F59]' lookup grk_unbreathe_dasia
+        uni0304' lookup grk_swap_to_dasia;
+} ccmp;
+
+
+# The composition the rest of this file takes for granted.
+#
+# Everything below is written as though a vowel and its length mark were already
+# one glyph: @GRK_MARK_BASE names uni1FB1 and not <alpha, macron>, and the
+# anchors that carry a breathing over a macron are written on uni1FB1 alone.
+# Nothing in the font ever performed that composition. It came from the shaper's
+# Unicode normalisation, which HarfBuzz runs before GSUB -- so every comment here
+# that says "ccmp has already folded" has been describing NFC, not this file.
+#
+# DirectWrite does not fold it. Word reaches GSUB with the vowel and both marks
+# still separate, and the vowel is an anchored base in its own right, so the
+# length mark and the breathing both attach to it at the same anchor and are
+# drawn on top of each other. That is the one stack this file exists to make
+# possible, and it was failing in the most common Greek-typing application there
+# is while every proof here rendered it correctly.
+#
+# Where normalisation has already run these rules match nothing: the sequence
+# they look for no longer exists by the time GSUB is reached, so HarfBuzz output
+# is unchanged glyph for glyph. Where it has not run, they put the text into the
+# form the rest of this file requires. The two shapers converge here rather than
+# staying on separate paths, which is what keeps one set of anchors and one set
+# of proofs honest for both.
+#
+# Only the dichrona are composed, and only with a length mark. That is the whole
+# of what is needed: alpha, iota and upsilon with a macron or a breve are exactly
+# the bases Unicode declined to encode with a further accent, which is why they
+# are the only ones where a second mark has to find an anchor on a base that
+# normalisation would otherwise have built.
+lookup grk_compose_length {
+    sub alpha   uni0304 by uni1FB1;
+    sub alpha   uni0306 by uni1FB0;
+    sub iota    uni0304 by uni1FD1;
+    sub iota    uni0306 by uni1FD0;
+    sub upsilon uni0304 by uni1FE1;
+    sub upsilon uni0306 by uni1FE0;
+    sub Alpha   uni0304 by uni1FB9;
+    sub Alpha   uni0306 by uni1FB8;
+    sub Iota    uni0304 by uni1FD9;
+    sub Iota    uni0306 by uni1FD8;
+    sub Upsilon uni0304 by uni1FE9;
+    sub Upsilon uni0306 by uni1FE8;
+    # ccmp.fea gives a capital's breve its own drawing, and it is included ahead
+    # of this file, so on a capital the glyph arriving here is breve.cap rather
+    # than uni0306. Math is built without ccmp.fea and reaches here with the
+    # plain breve, so both spellings have to be present -- neither replaces the
+    # other, and which one fires depends on the face.
+    sub Alpha   breve.cap by uni1FB8;
+    sub Iota    breve.cap by uni1FD8;
+    sub Upsilon breve.cap by uni1FE8;
+} grk_compose_length;
+
+# Ahead of every rule below, all of which read the composed glyph as their base.
+feature ccmp {
+    lookup grk_compose_length;
+} ccmp;
+
+
 # Accent typed before the macron.
 #
 # U+0304 and the accents are all combining class 230, so normalisation will not
