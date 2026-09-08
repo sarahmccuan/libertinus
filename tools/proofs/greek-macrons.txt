@@ -76,10 +76,37 @@
 ## Input-order variants (all should render identically)
 ᾱ́	# precomposed macron + oxia
 ᾱ́	# decomposed, macron first (NFD-ish)
-ά̄	# decomposed, accent first -- lookup must catch this
+ά̄	# decomposed, accent first
 ά̄	# precomposed oxia + combining macron
 ῑ̔́	# precomposed
 ῑ̔́	# decomposed
+
+## Every ordering of macron + dasia + oxia on iota
+ῑ̔́	# macron, dasia, oxia -- canonical
+ῑ́̔	# macron, oxia, dasia
+ἱ̄́	# dasia, macron, oxia
+ἵ̄	# dasia, oxia, macron
+ί̄̔	# oxia, macron, dasia
+ί̔̄	# oxia, dasia, macron -- fully reversed
+
+## Ypogegrammeni, which sorts last however it is typed
+ᾄ	# psili, oxia, iota
+ᾄ	# iota typed first
+ᾴ̓	# iota in the middle
+αͺ	# the spacing U+037A, which keyboards send for the subscript
+ᾱ̓́ͅ	# on a macron, where no precomposed form exists
+ᾼ͂	# capital: composition reaches past the accent to U+1FBC
+Άͅ	# capital: the accent composes first, iota set beside it
+
+## Capitals set the iota beside the letter, never underneath
+ᾼ	# U+1FBC, the font's own drawing -- the reference
+Άͅ	# Alpha oxia iota
+Ᾱͅ	# Alpha MACRON iota -- no precomposed form exists
+Ᾱ̓́ͅ	# the full stack, macron folded in and iota beside
+Ήͅ	# Eta oxia iota
+Ὼͅ	# Omega varia iota
+ᾹͅΜε	# followed by more letters -- advance must clear the iota
+ᾱ̓́ͅ	# lowercase, for contrast: still a subscript
 
 ## Capitals
 Ᾱ̓	# psili
