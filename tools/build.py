@@ -26,9 +26,10 @@ import greek_anchors
 # These are zero width copies of the spacing forms, positioned on top of the
 # Latin mark they stand in for so that a single set of anchors serves both.
 #
-# The measurements and the full argument are in sources/features/mark_greek.fea
-# under "Greek-shaped marks", and are deliberately not repeated here: they
-# describe outlines that can be redrawn, and two copies would drift.
+# The measurements and the full argument are above SHAPES in
+# tools/greek_cluster.py, which writes the substitution, and are deliberately
+# not repeated here: they describe outlines that can be redrawn, and two copies
+# would drift.
 GREEK_MARKS = {
     "acutecomb.grek": ("uni1FFD", "acutecomb"),   # oxia
     "gravecomb.grek": ("uni1FEF", "gravecomb"),   # varia
@@ -48,6 +49,26 @@ GREEK_MARKS = {
 # The name itself lives in greek_anchors, which also has to write rules about
 # this glyph; drawn here, named there, one string.
 CAPITAL_DIALYTIKA = greek_anchors.CAPITAL_DIALYTIKA
+
+# A combining copy of the adscript iota.
+#
+# Greek writes the iota under a lowercase vowel and BESIDE a capital, which is
+# why Unicode names the capital forms prosgegrammeni and the lowercase ones
+# ypogegrammeni. The font agrees: U+1FBC is drawn as A plus U+1FBE set beside
+# it, not as an A with something underneath.
+#
+# Unicode only encodes that pairing where it also encodes the accents, so a
+# capital carrying a macron and an iota -- which is a stack scholarly Greek
+# wants and Unicode never gave a character -- had nowhere to go and fell back on
+# the lowercase subscript. This is the glyph that lets it be set properly: the
+# face's own prosgegrammeni, zero width, drawn at the origin so that a base
+# anchor reads directly as the offset the face's own composites use.
+ADSCRIPT = greek_anchors.ADSCRIPT
+
+# The glyph it is copied from, and the one greek_anchors reads the placement out
+# of. Named there for the same reason CAPITAL_DIALYTIKA is: both files have to
+# agree about it, so there is one string.
+ADSCRIPT_SOURCE = greek_anchors.ADSCRIPT_SOURCE
 
 # Three faces -- Serif Semibold, Serif Semibold Italic and Sans Italic -- have no
 # U+0345 at all, so an iota subscript on any of them comes out as a .notdef box.
@@ -78,6 +99,7 @@ class Font:
         if "alpha" in font:
             self._make_greek_marks()
             self._make_ypogegrammeni()
+            self._make_spacing_ypogegrammeni()
             self._make_shifted_marks()
 
         if features:
@@ -224,6 +246,22 @@ class Font:
             glyph.lib[CATEGORIES_KEY] = "mark"
             font["uni0308"].draw(glyph.getPen())
 
+        # See ADSCRIPT. Drawn at its own origin rather than centred on anything,
+        # because greek_anchors reads the placement straight out of the face's
+        # own U+1FBC -- where this same glyph is a component at a known offset --
+        # so leaving the outline where it is makes that offset the anchor.
+        #
+        # Gated on the prosgegrammeni specifically, and not on a fallback to
+        # plain iota, because greek_anchors._adscript gives up without it and
+        # greek_cluster writes no swap rule with nothing to swap to. Drawn from
+        # a substitute, the glyph would ship unencoded, mark-classed and named
+        # by no lookup -- the same orphan CAPITAL_DIALYTIKA describes on Mono.
+        if ADSCRIPT_SOURCE in font and ADSCRIPT not in font:
+            glyph = font.newGlyph(ADSCRIPT)
+            glyph.width = 0
+            glyph.lib[CATEGORIES_KEY] = "mark"
+            font[ADSCRIPT_SOURCE].draw(glyph.getPen())
+
     def _make_shifted_marks(self):
         """A copy of each mark that has to move sideways in some context.
 
@@ -287,6 +325,38 @@ class Font:
         glyph.unicodes = [0x0345]
         glyph.lib[CATEGORIES_KEY] = "mark"
         font["uni037A"].draw(TransformPen(glyph.getPen(), Offset(dx, dy)))
+
+    def _make_spacing_ypogegrammeni(self):
+        """Build the spacing U+037A for the one face that has only the mark.
+
+        The mirror of _make_ypogegrammeni above, and needed for the same reason
+        read the other way round: Serif Bold Italic ships U+0345 and no U+037A,
+        so the character keyboards actually send for an iota subscript reaches a
+        .notdef box on that face alone.
+
+        U+037A is the spacing form of the same letter as U+1FBE, so it takes
+        that glyph's advance and left sidebearing. Checked against the seven
+        faces that ship both, this lands within 6 units of the drawn advance and
+        15 of the drawn sidebearing -- close enough for a glyph whose whole job
+        is to occupy a space, and derived in-face rather than copied from a
+        sibling, which is the rule everywhere else here.
+        """
+        font = self._font
+        if "uni037A" in font or "uni0345" not in font or "uni1FBE" not in font:
+            return
+        sub = font["uni0345"].getBounds(font)
+        model = font["uni1FBE"].getBounds(font)
+        if not sub or not model:
+            return
+
+        # A spacing character, so deliberately NOT flagged as a mark: given the
+        # mark class it would be given zero advance by the shaper and vanish,
+        # which is the failure it exists to prevent.
+        glyph = font.newGlyph("uni037A")
+        glyph.width = font["uni1FBE"].width
+        glyph.unicodes = [0x037A]
+        font["uni0345"].draw(
+            TransformPen(glyph.getPen(), Offset(model[0] - sub[0], 0)))
 
     def _post_process(self, otf):
         font = self._font

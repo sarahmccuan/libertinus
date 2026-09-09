@@ -45,6 +45,22 @@ https://github.com/alerque/libertinus
 ChangeLog
 ---------
 
+unreleased (GIT) <Libertinus> Version HEAD
+- Normalise a Greek cluster in the font: every precomposed letter is taken
+  apart, its marks are sorted into Unicode's canonical order and the sequence is
+  composed again, so a vowel and its diacritics render the same whatever order
+  they were typed in and whether or not the shaper normalised first; the rules
+  are derived from Unicode's own decomposition data rather than listing the
+  orderings that had been reported
+- Set the adscript iota beside a Greek capital rather than under it for the
+  stacks Unicode never encoded -- a capital with a macron and an iota, say --
+  which until now fell back on the lowercase subscript; the spacing is read from
+  each face's own prosgegrammeni forms and extrapolated to the rest
+- Fold the spacing ypogegrammeni U+037A into the combining mark after a Greek
+  letter, which is what keyboards send for an iota subscript
+- Draw the spacing ypogegrammeni on Serif Bold Italic, the one face that ships
+  the combining U+0345 without it and rendered U+037A as a .notdef box
+
 30 August 2026 (Sarah McCuan) <Libertinus> Version 7.054
 - Compose a Greek dichronon with its length mark in ccmp rather than relying on
   the shaper to have done it; every rule in the Greek mark handling is written

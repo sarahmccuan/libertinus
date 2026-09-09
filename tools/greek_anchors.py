@@ -44,6 +44,13 @@ import unicodedata
 
 from fontTools.pens.recordingPen import DecomposingRecordingPen
 
+import greek_cluster
+from greek_cluster import GREEK_BLOCKS
+from greek_cluster import codepoints as _codepoints
+# The capital glyphs build.py draws, named in greek_cluster and re-exported here
+# because build.py reads them off this module.
+from greek_cluster import ADSCRIPT, ADSCRIPT_SOURCE, CAPITAL_DIALYTIKA
+
 # --- judgement calls -------------------------------------------------------
 
 # Clearance between a macron or breve and the mark above it, roughly two thirds
@@ -70,12 +77,6 @@ GAP_OVER_BREATHING = 13
 # each is this face's opinion about how the pair stacks -- which is the question
 # GAP_OVER_BREATHING was guessing at.
 PERISPOMENI_REFS = {"uni0313": "uni1FCF", "uni0314": "uni1FDF"}
-
-# The dialytika a capital gets. Anchored like the plain one everywhere, but
-# deliberately absent from the mark-to-mark stacking below, which is what keeps
-# an accent after it beside the letter instead of on top of it. build.py draws
-# it and imports the name from here, so the string is written once.
-CAPITAL_DIALYTIKA = "uni0308.cap"
 
 MARKS = {
     "acutecomb": "oxia", "acutecomb.grek": "oxia",
@@ -219,6 +220,140 @@ def contours(font, name):
     return out
 
 
+# How far into a letter's own notches the iota is allowed to see.
+#
+# Without a limit, a letter that opens out above the iota -- upsilon, tau -- has
+# no ink at all across most of the band, and the mean would drag the iota into
+# the stem. Clamping the depth is what makes the measure "how much white is
+# there, up to a point" rather than "how far away is the furthest thing".
+ADSCRIPT_DEPTH = 250.0
+
+# Heights sampled across the iota's band. 32 over roughly 340 units is about one
+# sample per 10, finer than any spacing decision this feeds.
+ADSCRIPT_STEPS = 32
+
+
+def _flatten(font, name, steps=8):
+    """Contours as polylines, with curves sampled rather than left as controls.
+
+    contours() keeps the control points, which is right for a bounding box --
+    they can only overstate it -- and wrong for asking where the outline is at a
+    given height, because a control point is generally not on the curve.
+    """
+    pen = DecomposingRecordingPen(font)
+    font[name].draw(pen)
+    out, cur, start = [], [], None
+    for op, args in pen.value:
+        if op == "moveTo":
+            if len(cur) > 1:
+                out.append(cur)
+            start = args[0]
+            cur = [start]
+        elif op == "lineTo":
+            cur.append(args[0])
+        elif op == "curveTo":
+            pts = [cur[-1]] + list(args)
+            # feaLib hands cubics through in pairs of controls plus an endpoint;
+            # more than one segment arrives as a run, so walk it in threes.
+            for i in range(0, len(args), 3):
+                seg = [pts[i], args[i], args[i + 1], args[i + 2]] \
+                    if i + 2 < len(args) else None
+                if seg is None:
+                    break
+                for k in range(1, steps + 1):
+                    t = k / steps
+                    u = 1 - t
+                    cur.append((
+                        u * u * u * seg[0][0] + 3 * u * u * t * seg[1][0]
+                        + 3 * u * t * t * seg[2][0] + t * t * t * seg[3][0],
+                        u * u * u * seg[0][1] + 3 * u * u * t * seg[1][1]
+                        + 3 * u * t * t * seg[2][1] + t * t * t * seg[3][1]))
+        elif op == "qCurveTo":
+            prev = cur[-1]
+            pts = list(args)
+            if pts[-1] is None:          # an all-off-curve TrueType contour
+                pts = pts[:-1]
+            for i in range(len(pts) - 1):
+                c = pts[i]
+                # Between two consecutive off-curve points the on-curve one
+                # is implied at their midpoint; the last one is the only
+                # explicit endpoint TrueType writes down.
+                nxt = (((c[0] + pts[i + 1][0]) / 2,
+                        (c[1] + pts[i + 1][1]) / 2)
+                       if i + 2 <= len(pts) - 1 else pts[-1])
+                for k in range(1, steps + 1):
+                    t = k / steps
+                    u = 1 - t
+                    cur.append((u * u * prev[0] + 2 * u * t * c[0] + t * t * nxt[0],
+                                u * u * prev[1] + 2 * u * t * c[1] + t * t * nxt[1]))
+                prev = nxt
+        elif op == "closePath":
+            if len(cur) > 1:
+                out.append(cur)
+            cur = []
+    if len(cur) > 1:
+        out.append(cur)
+    return out
+
+
+def _profile(font, name, y0, y1, steps=ADSCRIPT_STEPS):
+    """Rightmost ink at each of `steps` heights across a band. None where none.
+
+    The right edge of a bounding box answers "what is the furthest point
+    anywhere", which is the wrong question for an adscript. Upsilon's furthest
+    point is the tip of its arm at cap height; the iota sits at the baseline,
+    where upsilon is a narrow stem, and spacing to the arm leaves a hole under
+    it. Omicron's furthest point is its own middle, right where the iota is, so
+    the same measure sets it flush. A profile can tell those two apart.
+    """
+    edges = []
+    for c in _flatten(font, name):
+        for i in range(len(c)):
+            a, b = c[i], c[(i + 1) % len(c)]
+            if a[1] != b[1]:
+                edges.append((a, b))
+    if not edges:
+        return None
+
+    xs = []
+    for k in range(steps):
+        y = y0 + (y1 - y0) * (k + 0.5) / steps
+        best = None
+        for a, b in edges:
+            lo, hi = (a, b) if a[1] < b[1] else (b, a)
+            if lo[1] <= y < hi[1]:
+                x = lo[0] + (hi[0] - lo[0]) * (y - lo[1]) / (hi[1] - lo[1])
+                if best is None or x > best:
+                    best = x
+        xs.append(best)
+    return xs if any(x is not None for x in xs) else None
+
+
+def _reach(profile, depth=ADSCRIPT_DEPTH):
+    """Mean rightmost ink, each sample floored `depth` behind the furthest.
+
+    How much white the letter leaves beside the iota, taken over the whole band.
+    A letter that keeps its width across the band reads the same as it did from
+    its bounding box; one that pulls away over part of it reads narrower, by
+    however much and for however long it pulls away.
+    """
+    solid = [x for x in profile if x is not None]
+    floor = max(solid) - depth
+    return sum(max(x, floor) if x is not None else floor
+               for x in profile) / len(profile)
+
+
+def _peak(profile):
+    """The furthest right the letter comes anywhere in the band.
+
+    Where the two shapes come closest, and so what a minimum clearance has to be
+    measured against. Rho is why this is needed as well as the mean: its bowl is
+    up in the band and its stem is bare below, so averaging alone walks the iota
+    into the bowl to pay for all that white under it.
+    """
+    return max(x for x in profile if x is not None)
+
+
 def _box(points):
     xs = [p[0] for p in points]
     ys = [p[1] for p in points]
@@ -227,6 +362,20 @@ def _box(points):
 
 def _bbox(font, name):
     cs = contours(font, name)
+    return _box([p for c in cs for p in c]) if cs else None
+
+
+def _right_of(font, name, x):
+    """The box around whatever this glyph draws to the right of x.
+
+    For pulling one piece out of a composite that was drawn rather than
+    assembled: the adscript iota is the only thing a prosgegrammeni capital puts
+    beyond the letter, so selecting whole contours by their left edge isolates
+    it. Whole contours, because a contour that starts right of x cannot be part
+    of the letter -- taking loose points instead would slice the letter's own
+    right side off and call it an iota.
+    """
+    cs = [c for c in contours(font, name) if c and min(p[0] for p in c) >= x]
     return _box([p for c in cs for p in c]) if cs else None
 
 
@@ -239,93 +388,11 @@ def _cx(b):
     return (b[0] + b[2]) / 2
 
 
-# Marks that can legitimately appear in either order in a source text, because
-# Unicode forbids normalisation from reordering them: a breathing and an accent
-# are both combining class 230, so NFC leaves whatever order it was given.
-BREATHING_CP = {0x0313, 0x0314}
-ACCENT_CP = {0x0300, 0x0301, 0x0342}
-
-
-def _codepoints(font):
-    out = {}
-    for glyph in font:
-        for cp in glyph.unicodes or ():
-            out.setdefault(cp, glyph.name)
-    return out
-
-
-def _reordered(font):
-    """Rules for text that spells the accent before the breathing.
-
-    Greek convention writes the breathing first, but nothing enforces it, and
-    normalisation cannot correct it -- both marks are combining class 230, so
-    NFC will not reorder them. Worse, it makes the problem harder to see: given
-    alpha + oxia + psili it composes the accent into the vowel and leaves the
-    breathing stranded on a precomposed glyph that has nowhere to put it. The
-    breathing then lands at the pen position, which reads as an accent adrift to
-    the right of the word.
-
-    Every one of these spellings has a precomposed character that means exactly
-    the same thing, so the fix is to substitute it: a two-glyph-to-one ligature
-    in ccmp, before anything tries to position a mark. The pairs are read out of
-    Unicode's own decomposition data rather than typed, so the set cannot drift.
-    """
-    cps = _codepoints(font)
-    out = []
-    for cp in range(0x1F00, 0x2000):
-        target = cps.get(cp)
-        if target is None:
-            continue
-        d = unicodedata.normalize("NFD", chr(cp))
-        if len(d) < 3 or ord(d[1]) not in BREATHING_CP or ord(d[2]) not in ACCENT_CP:
-            continue
-        swapped = d[0] + d[2] + d[1] + d[3:]
-        spelling = unicodedata.normalize("NFC", swapped)
-        if spelling == chr(cp):
-            continue
-        names = [cps.get(ord(c)) for c in spelling]
-        if any(n is None for n in names):
-            continue
-        out.append("    sub %s by %s;" % (" ".join(names), target))
-    return out
-
-
-def _equivalents(font):
-    """Fold the deprecated marks onto the ones everything else is written for.
-
-    U+0343 is canonically equivalent to U+0313 and U+0344 to U+0308 U+0301, so
-    substituting them changes nothing about what the text says -- but a source
-    that uses them would otherwise miss every rule written against the usual
-    spellings. Older Greek texts and some OCR output still emit them.
-    """
-    cps = _codepoints(font)
-    out = []
-    for cp, replacement in ((0x0343, "̓"), (0x0344, "̈́")):
-        src = cps.get(cp)
-        names = [cps.get(ord(c)) for c in replacement]
-        if src and all(names):
-            out.append("    sub %s by %s;" % (src, " ".join(names)))
-    return out
-
-
 # The marks NFC folds into a capital. A composed glyph whose decomposition ends
 # in one of these is one this module has to anchor; anything else is either not
 # a capital or not a mark we place. Why that matters is in _composed_capitals.
 CAPITAL_FOLDED = frozenset((0x0300, 0x0301, 0x0308, 0x0313,
                             0x0314, 0x0342, 0x0345))
-
-# Greek and Coptic, and Greek Extended.
-#
-# Every mark in CAPITAL_FOLDED is shared with the Latin and Cyrillic blocks, and
-# so is the shape of the problem -- Aacute, Adieresis and U+0401 all decompose to
-# a capital plus one of those marks. Without this filter _composed_names picked
-# them up too, and the rules written from it swapped the Latin acute for the
-# Greek oxia on a Latin base. That drawing is a synthesised glyph with no .sfd
-# anchors, so the Latin mark lookup stopped covering it and it fell to the
-# origin: 27 non-Greek bases affected on Serif Regular, marks unattached on all
-# of them. The test is on the BARE letter, which is what decides the script; the
-# composed glyph follows it.
-GREEK_BLOCKS = ((0x0370, 0x03FF), (0x1F00, 0x1FFF))
 
 _ANCHOR_RE = re.compile(
     r"pos\s+base\s+(\S+)\s+<anchor\s+(-?\d+)\s+(-?\d+)>\s+mark\s+(@GRK_ABOVE|@GRK_BELOW)")
@@ -427,7 +494,15 @@ def _composed_names(font):
     cannot disagree about which bases exist -- they did once, and the marks on
     every composed capital silently kept their Latin drawing.
 
-    Greek only; see GREEK_BLOCKS for what goes wrong without that.
+    Greek bases only. Every mark in CAPITAL_FOLDED is shared with the Latin and
+    Cyrillic blocks, and so is the shape of the problem: Aacute, Adieresis and
+    U+0401 all decompose to a capital plus one of them. Without the GREEK_BLOCKS
+    filter this picked them up too, and the rules written from it swapped the
+    Latin acute for the Greek oxia on a Latin base -- a synthesised glyph with no
+    .sfd anchors, so the Latin mark lookup stopped covering it and the mark fell
+    to the origin, 27 non-Greek bases affected on Serif Regular. The test is on
+    the BARE letter, which is what decides the script; the composed glyph follows
+    it.
     """
     cps = _codepoints(font)
     for cp in sorted(cps):
@@ -441,38 +516,6 @@ def _composed_names(font):
         if bare is None or name == bare or ord(d[1]) not in CAPITAL_FOLDED:
             continue
         yield name, bare
-
-
-def _grek_on_composed(font, marks):
-    """Extend the Greek-drawing substitution to the composed capitals.
-
-    mark_greek.fea keys that substitution on @GRK_MARK_BASE, which lists the
-    bases it can name at parse time -- the plain letters and the barred vowels.
-    The composed capitals are enumerated from Unicode here rather than listed
-    there, so they have to be added from this side or a mark landing on one
-    keeps the Latin drawing: an acute rather than an oxia, and for the
-    perispomeni the Latin tildecomb outright.
-
-    Reuses the lookups mark_greek.fea already defines, which is why this must be
-    written after it -- and being later also puts it after the reorder rules, so
-    those still only ever have to match the plain drawing of a mark.
-    """
-    rules = []
-    for plain, guard, lookup in (
-            ("acutecomb", "acutecomb.grek", "grk_shape_oxia"),
-            ("gravecomb", "gravecomb.grek", "grk_shape_varia"),
-            ("uni0342", "uni0342.grek", "grk_shape_perisp"),
-            # Same split for the capital dialytika: mark_greek.fea covers the
-            # capitals it can name, this covers the composed ones.
-            ("uni0308", CAPITAL_DIALYTIKA, "grk_dial_to_cap")):
-        if guard not in marks:
-            continue
-        for name, _ in _composed_names(font):
-            rules.append("    sub %s %s' lookup %s;" % (name, plain, lookup))
-            if plain != "uni0308":
-                rules.append("    sub %s @GRK_TWEEN %s' lookup %s;"
-                             % (name, plain, lookup))
-    return rules
 
 
 def _composed_capitals(font, hand, marks, ink, cls):
@@ -748,6 +791,197 @@ def _capital_dialytika(font, hand, marks, cls):
     return rows
 
 
+def _adscript(font, cls):
+    """Place the adscript iota beside every capital that can take one.
+
+    Returns (markclass, anchors, room): the mark class for the glyph, one base
+    anchor per capital, and the advance each capital has to grow by to leave the
+    iota somewhere to sit.
+
+    Three capitals -- Alpha, Eta and Omega -- have a precomposed prosgegrammeni
+    form, and those are not guesses to be improved on but the face's own answer
+    to exactly this question. U+1FBC is drawn as `A` plus `uni1FBE` at x 605 in
+    an advance 208 units wider than a bare Alpha, so a base anchor at 605 and an
+    advance of +208 reproduce it to the unit. Read rather than measured, because
+    a component offset is exact where a bounding box is an inference.
+
+    Every other capital is extrapolated from those, by the ink gap they imply
+    between the letter and the iota. That gap is the only judgement in here, and
+    it is taken as the mean of the three the face already decided -- so a face
+    that sets its adscript tight gets tight ones throughout.
+
+    Measured against the letter's profile over the band the iota occupies
+    rather than against its bounding box, for the reason in _profile. The cost
+    of the box is worth stating: on Serif Regular it left upsilon and omicron 48
+    and 196 units clear of their letters -- the same rule, four times the
+    space.
+
+    Two numbers come out of the calibration, because the two sides are not the
+    same question. The iota's own side is optical, and reads the profile. Its
+    far side faces whatever word comes next, which is a flat-to-flat fit like
+    any other sidebearing, so the advance keeps using the plain box measure.
+
+    The vertical is read the same way, and has to be. Four faces -- Serif
+    Italic, Bold Italic, Semibold and Semibold Italic -- draw U+1FBE at the
+    SUBSCRIPT height, ink from -254 to 88, and lift it back onto the baseline
+    inside their own composites (Semibold by 249, Semibold Italic by 252). The
+    other seven draw it sitting on the baseline already and lift it by nothing.
+    Copying the glyph at its own origin and anchoring at y=0 is therefore right
+    on seven faces and drops the iota a quarter of an em on four, so the lift
+    the face applies is read out of the composite alongside the offset.
+
+    The composed capitals -- a macron folded in, an accent folded in -- take the
+    bare letter's figure shifted by however far the composite moved the letter,
+    which is the same correction _composed_capitals applies to its anchors.
+    """
+    if ADSCRIPT not in font or ADSCRIPT_SOURCE not in font:
+        return None, [], []
+    src = _bbox(font, ADSCRIPT_SOURCE)
+    if not src:
+        return None, [], []
+
+    cps = _codepoints(font)
+    bycp = {}
+    for cp, n in cps.items():
+        bycp.setdefault(n, cp)
+
+    # What the face already decided, read out of its own composites.
+    #
+    # Capitals only. U+1FB3 and its two siblings decompose to a letter plus the
+    # same U+0345, but their iota is drawn UNDER the letter, which is the whole
+    # distinction prosgegrammeni and ypogegrammeni name -- so their offsets are
+    # not a second opinion about where an adscript goes, they are an answer to
+    # a different question. Averaged in, the three of them at roughly -166 drag
+    # the mean below zero and every extrapolated capital gets its iota inside
+    # the letterform.
+    known, gaps, optical, tight, lifts = {}, [], [], [], []
+    for cp in sorted(cps):
+        name = cps[cp]
+        if not (chr(cp).isupper() or unicodedata.category(chr(cp)) == "Lt"):
+            continue
+        d = unicodedata.normalize("NFD", chr(cp))
+        if len(d) != 2 or ord(d[1]) != 0x0345:
+            continue
+        bare = cps.get(ord(d[0]))
+        if bare is None or bare not in font:
+            continue
+        # Where the composite puts the iota, across and up. Read off the
+        # component where the face builds the glyph that way, which most do and
+        # which is exact.
+        at = up = None
+        for c in font[name].components:
+            root, dx, dy = _resolve(font, c.baseGlyph)
+            if root == _resolve(font, ADSCRIPT_SOURCE)[0]:
+                at = c.transformation[4] + dx
+                up = c.transformation[5] + dy
+                break
+        if at is None:
+            # Drawn rather than assembled -- 88% of Serif Italic's composed
+            # capitals are, and every one of its prosgegrammeni forms. The iota
+            # is the rightmost ink in the glyph, so differencing the two right
+            # edges recovers the offset. A bounding box would normally be the
+            # wrong tool on a slanted face, but both edges here belong to the
+            # same shape, so the slant is on both sides and cancels.
+            cb = _bbox(font, name)
+            if not cb:
+                continue
+            at = cb[2] - src[2]
+            # The same reading for the lift, which a pair of right edges cannot
+            # give: the composite's own bottom is the letter's, not the iota's.
+            # Having just placed the iota horizontally, though, we know where it
+            # starts, so the contours beyond that point are the iota and nothing
+            # else. Both bottoms are the same shape, so whatever the control
+            # points overstate cancels in the difference.
+            piece = _right_of(font, name, at + src[0] - 1)
+            if piece:
+                up = piece[1] - src[1]
+        known[bare] = (at, up, font[name].width - font[bare].width)
+        b = _bbox(font, bare)
+        if b:
+            gaps.append(at + src[0] - b[2])
+        # The same clearance read against the profile rather than the box, over
+        # the band this face's own composite puts the iota in: once as the white
+        # over the whole band, once as the closest the two shapes come.
+        band = 0.0 if up is None else up
+        prof = _profile(font, bare, src[1] + band, src[3] + band)
+        if prof is not None:
+            optical.append(at + src[0] - _reach(prof))
+            tight.append(at + src[0] - _peak(prof))
+        if up is not None:
+            lifts.append(up)
+    if not known:
+        return None, [], []
+    gap = sum(gaps) / len(gaps)
+    look = sum(optical) / len(optical) if optical else gap
+    close = sum(tight) / len(tight) if tight else gap
+    # Zero where the face never lifts its own, which is the seven that draw
+    # U+1FBE on the baseline -- so they keep the anchor they had.
+    lift = sum(lifts) / len(lifts) if lifts else 0.0
+
+    def figure(bare):
+        """(anchor x, anchor y, advance delta) for a bare capital."""
+        if bare in known:
+            at, up, delta = known[bare]
+            return at, lift if up is None else up, delta
+        b = _bbox(font, bare)
+        if not b:
+            return None
+        # Placed by the white over the band, but never closer than the face's
+        # own composites come at their tightest -- whichever of the two wants
+        # the iota further out wins. Equalising the white alone is right for the
+        # letters that recede and keep receding, and too tight for the ones that
+        # recede and come back.
+        prof = _profile(font, bare, src[1] + lift, src[3] + lift)
+        if prof is None:
+            at = b[2] + gap - src[0]
+        else:
+            at = max(_reach(prof) + look, _peak(prof) + close) - src[0]
+        # The advance has to clear the iota's ink and leave the same gap on the
+        # far side that the letter got on this one, so the next word does not
+        # crowd it. The plain gap, not the optical one: the far side is a flat
+        # fit against the next word, and has no profile to read.
+        return (at, lift, at + src[2] + gap - font[bare].width)
+
+    anchors, room = [], []
+
+    def emit(name, at, up, delta):
+        anchors.append("    pos base %-16s <anchor %5d %5d> mark %s;"
+                       % (name, round(at), round(up), cls))
+        room.append((name, round(delta)))
+
+    caps = set()
+    for cp, name in cps.items():
+        if (any(lo <= cp <= hi for lo, hi in GREEK_BLOCKS)
+                and (chr(cp).isupper() or unicodedata.category(chr(cp)) == "Lt")):
+            caps.add(name)
+
+    for name in sorted(caps):
+        cp = bycp.get(name)
+        if cp is None:
+            continue
+        d = unicodedata.normalize("NFD", chr(cp))
+        # A capital that already carries an iota needs no second one.
+        if 0x0345 in [ord(c) for c in d[1:]]:
+            continue
+        bare = cps.get(ord(d[0])) if len(d) > 1 else name
+        if bare is None:
+            continue
+        f = figure(bare)
+        if f is None:
+            continue
+        at, up, delta = f
+        if name != bare:
+            shift = _letter_shift(font, name, bare)
+            if shift is None:
+                continue
+            at += shift[0]
+            up += shift[1]
+        emit(name, at, up, delta)
+
+    return ("markClass %-16s <anchor %5d %5d> %s;" % (ADSCRIPT, 0, 0, cls),
+            anchors, room)
+
+
 def _pair_shifts(font, marks, ink):
     """Every context in which a mark has to move sideways from its own anchor.
 
@@ -961,6 +1195,29 @@ def generate(font, fea=""):
          "# Rebuild rather than edit; the clearances live in that file.",
          "# " + "-" * 70, ""]
 
+    # The bases a mark can be anchored to, which is what decides where it takes
+    # its Greek drawing rather than its Latin one. Assembled from the three
+    # places anchors come from -- the barred vowels above, the hand-set capitals
+    # in mark_greek.fea, and the composed capitals this module derives -- plus
+    # lowercase upsilon, whose anchor is the .sfd's own and is the reason it is
+    # the one Greek letter this file never had to place.
+    anchored = (set(BARRED) | set(hand["above"]) | {"upsilon"}
+                | {n for n, _ in _composed_names(font)})
+    anchored = {n for n in sorted(anchored) if n in font}
+
+    # The adscript iota. Its own mark class, because it is the one mark here
+    # that goes beside the letter rather than over or under it, and because the
+    # capitals are the only bases that may ever receive it.
+    ad_class, ad_anchors, ad_room = _adscript(font, "@GRK_ADSCRIPT")
+
+    # Emitted first, ahead of the mark feature rather than beside the
+    # substitutions it mostly serves: the room a capital makes for its adscript
+    # iota is GPOS, and it matches the marks between the two with a class this
+    # block declares. A class cannot be used before it is defined.
+    cluster_prelude, cluster_body = greek_cluster.generate(
+        font, anchored, [n for n, _ in ad_room])
+    L += cluster_prelude
+
     # Worked out before the anchors because the variants join their original's
     # mark class. build.py has already drawn them -- it needs the same list
     # earlier still, to write the context classes ahead of mark_greek.fea.
@@ -983,6 +1240,9 @@ def generate(font, fea=""):
         target = names[0] if len(names) == 1 else "[%s]" % " ".join(names)
         L.append("markClass %-16s <anchor %5d %5d> %s;"
                  % (target, round(_cx(b)), round(b[1]), cls[n]))
+
+    if ad_class:
+        L.append(ad_class)
 
     def base_rule(base, mark, x, bottom):
         return ("    pos base %-10s <anchor %5d %5d> mark %s;"
@@ -1008,6 +1268,37 @@ def generate(font, fea=""):
     composed = _composed_capitals(font, hand, marks, ink, cls)
     if composed:
         L += ["", "  lookup grkgen_composed {"] + composed + ["  } grkgen_composed;"]
+
+    # The adscript iota, and the room the capital has to make for it.
+    #
+    # The room is a contextual adjustment on the BASE, which is the construct
+    # grk_caps_room already relies on and the one luaotfload honours; the same
+    # thing said on a mark is silently dropped. See _pair_shifts.
+    #
+    # Written per depth because the marks between the letter and the iota vary,
+    # and longest first: within a lookup the first matching rule wins, and a
+    # rule with fewer marks in it would otherwise claim a longer cluster and
+    # widen the advance by the same amount twice over.
+    if ad_anchors:
+        L += ["", "  lookup grkgen_adscript_base {"] + ad_anchors + ["  } grkgen_adscript_base;"]
+        # Every drawing a mark can be wearing by the time GPOS runs, which is
+        # not the plain list the substitutions were written against: the Greek
+        # shapes and the shifted copies have both been swapped in by then, and a
+        # class naming only the originals stops matching exactly where the
+        # cluster is deepest. The same trap @GRK_SH_* exists to avoid; see
+        # shift_classes.
+        seen = set(marks) | {"uni0306", "breve.cap"}
+        for by_dx in shifts.values():
+            seen |= set(by_dx.values())
+        L.append("@GRK_ADMARK = [%s];"
+                 % " ".join(sorted(n for n in seen if n in font)))
+        rules = []
+        for depth in reversed(range(greek_cluster.MAX_TWEEN + 1)):
+            ahead = " ".join(["@GRK_ADMARK"] * depth + [ADSCRIPT])
+            for name, delta in ad_room:
+                rules.append("    pos %s' <0 0 %d 0> %s;" % (name, delta, ahead))
+        L += ["", "  lookup grkgen_adscript_room {"] + rules \
+             + ["  } grkgen_adscript_room;"]
 
     # The rules that centre a breathing-and-accent cluster are no longer GPOS;
     # they are emitted as substitutions further down. See _pair_shifts.
@@ -1070,13 +1361,10 @@ def generate(font, fea=""):
                 L.extend(mark_rule("uni0308", n, _cx(d) + lean, d[3] + rise))
     L += ["  } grkgen_mkmk;", "} mkmk;"]
 
-    # Substitutions. These are GSUB and run before any of the positioning above,
-    # whatever order they appear in the file; the order that does matter is
-    # among themselves, and the Greek-drawing swap has to come last so the two
-    # before it only ever match the plain drawing of a mark.
-    equiv, reord = _equivalents(font), _reordered(font)
-    grek = _grek_on_composed(font, marks)
-
+    # Substitutions. These are GSUB and run before any of the positioning
+    # above, whatever order they appear in the file; the order that does matter
+    # is among themselves, and it is set by where each block is written below.
+    #
     # One lookup per distinct shift rather than one per mark: several marks move
     # by the same amount in different contexts, and a single-substitution lookup
     # can carry all of them because each names its own destination.
@@ -1093,17 +1381,13 @@ def generate(font, fea=""):
 
     pairs = [pair_sub(*r) for r in pair_rules]
 
-    if equiv or reord or grek or pairs:
-        L += ["", "feature ccmp {"]
-        if equiv:
-            L += ["  lookup grkgen_equiv {"] + equiv + ["  } grkgen_equiv;"]
-        if reord:
-            L += ["  lookup grkgen_reorder {"] + reord + ["  } grkgen_reorder;"]
-        L += grek
-        # Last, and after the drawing swaps above on purpose. Which variant a
-        # mark takes depends on the width of the accent beside it, and the two
-        # drawings of an accent are different widths, so a rule that matched
-        # before the swap would pick the shift measured for the other one.
+    if cluster_body or pairs:
+        L += ["", "feature ccmp {"] + cluster_body
+        # Last, and after the drawing swaps in the cluster block on purpose.
+        # Which variant a mark takes depends on the width of the accent beside
+        # it, and the two drawings of an accent are different widths, so a rule
+        # that matched before the swap would pick the shift measured for the
+        # other one.
         if pairs:
             L += ["  lookup grkgen_pair {"] + pairs + ["  } grkgen_pair;"]
         L.append("} ccmp;")

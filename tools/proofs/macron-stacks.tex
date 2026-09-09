@@ -1,0 +1,225 @@
+%% macron-stacks.tex -- proof sheet for precomposed macrons carrying
+%% combining breathings and accents, as collected in
+%% https://github.com/jaycrick/ag-precomposed-macrons
+%%
+%% GPOS mark/mkmk anchors have to place these. The macron is already in the
+%% base codepoint, so a breathing sits on the macron and an accent sits on the
+%% breathing -- two levels of mark-to-mark attachment.
+%%
+%% One source, two engines. Send the output to build/ rather than leaving it
+%% beside this file: tools/proofs holds proof SOURCES, and build/ is where
+%% everything generated belongs and is already gitignored.
+%%
+%%     mkdir -p build/proof
+%%     lualatex -output-directory=build/proof -jobname=macron-stacks-lua \
+%%              tools/proofs/macron-stacks.tex
+%%     xelatex  -output-directory=build/proof -jobname=macron-stacks-xe \
+%%              tools/proofs/macron-stacks.tex
+%%
+%% LaTeX will not create the output directory, and it writes beside the current
+%% directory unless told otherwise. The -jobname is what lets one source serve
+%% both engines: without it the second run overwrites the first.
+%%
+%% It picks up the fonts from build/ whether you run it from the repository
+%% root or from this directory. If the font search misbehaves, replace
+%% \LibPath below with a literal path such as build/ .
+%%
+
+\documentclass[11pt,a4paper]{article}
+
+\usepackage{fontspec}
+\usepackage[margin=18mm]{geometry}
+\usepackage{array}
+\usepackage{booktabs}
+
+%% The HarfBuzz comparison is LuaTeX-only, so it is switched on by engine
+%% rather than by hand. fontspec's Renderer= option does not exist under XeTeX,
+%% which warns "Ignored LuaTeX-only feature" and then sets the section in the
+%% ordinary font -- a duplicate of the rows above it that reads like a result.
+%% XeTeX does its own shaping and has no node renderer to contrast against, so
+%% the section has nothing to say there. Force it off with \harfbuzzfalse after
+%% this line if your luaotfload has no HarfBuzz renderer either.
+\newif\ifharfbuzz
+\ifdefined\directlua \harfbuzztrue \else \harfbuzzfalse \fi
+
+%% ---------------------------------------------------------------- fonts
+\makeatletter
+\newif\iflocalfonts
+\newcommand\lib@try[1]{%
+  \iflocalfonts\else
+    \IfFileExists{#1LibertinusSerif-Regular.otf}{\gdef\LibPath{#1}\localfontstrue}{}%
+  \fi}
+\lib@try{build/}
+\lib@try{../build/}
+\lib@try{../../build/}
+\lib@try{./}
+\makeatother
+
+\iflocalfonts
+  \setmainfont{LibertinusSerif-Regular.otf}[
+    Path            = \LibPath,
+    ItalicFont      = LibertinusSerif-Italic.otf,
+    BoldFont        = LibertinusSerif-Bold.otf,
+    Ligatures       = TeX,
+    Script          = Greek,
+    Language        = Greek,
+  ]
+  \setmonofont{LibertinusMono-Regular.otf}[Path=\LibPath]
+  %% same face, but with the mark-attachment features switched off
+  \newfontfamily\libnomarks{LibertinusSerif-Regular.otf}[
+    Path       = \LibPath,
+    Script     = Greek,
+    Language   = Greek,
+    RawFeature = {-mark;-mkmk},
+  ]
+  \ifharfbuzz
+    \newfontfamily\libhb{LibertinusSerif-Regular.otf}[
+      Path     = \LibPath,
+      Script   = Greek,
+      Language = Greek,
+      Renderer = HarfBuzz,
+    ]
+  \fi
+\else
+  \GenericWarning{}{macron-stacks: no build/LibertinusSerif-Regular.otf found,
+    falling back to an installed Libertinus}
+  \setmainfont{Libertinus Serif}[Ligatures=TeX, Script=Greek, Language=Greek]
+  \setmonofont{Libertinus Mono}
+  \newfontfamily\libnomarks{Libertinus Serif}[
+    Script=Greek, Language=Greek, RawFeature={-mark;-mkmk}]
+  \ifharfbuzz
+    \newfontfamily\libhb{Libertinus Serif}[
+      Script=Greek, Language=Greek, Renderer=HarfBuzz]
+  \fi
+\fi
+
+%% The size the stacks are actually judged at. Big enough that a mark sitting a
+%% few units off its anchor is visible rather than inferred.
+\newcommand\glyphsize{\fontsize{20}{26}\selectfont}
+
+%% One column of the sequence tables: the glyph over its codepoints, the
+%% codepoints stacked the way they are typed.
+%%
+%% A nested tabular rather than \shortstack, and [t] rather than the default:
+%% the columns carry one, two or three codepoints, and anything that centres
+%% them vertically puts the glyphs themselves on different baselines across the
+%% row -- which is exactly the thing this sheet exists to look at. Top
+%% alignment keeps every glyph on one line and lets the codepoints hang.
+%%
+%% The codepoints are not wrapped in braces either. \\ inside a group is not
+%% the row separator, so bracing the second argument makes the whole stack one
+%% row and the breaks inside it an error. The font switch runs to the end of
+%% the cell instead, which is safe because nothing follows it.
+\newcommand\cell[2]{%
+  \begin{tabular}[t]{@{}c@{}}{\glyphsize\strut #1}\\[1ex]\ttfamily\tiny #2\end{tabular}}
+
+\setlength\parindent{0pt}
+\pagestyle{plain}
+
+\begin{document}
+
+\section*{ag-precomposed-macrons}
+
+A comprehensive list of polytonic characters with precomposed macrons for long
+vowels --- the whole of that repository's README, set in Libertinus Serif.
+
+\bigskip
+{\glyphsize ᾱ ᾱ́ ᾱ̀ ᾱ̓ ᾱ̔ ᾱ̓́ ᾱ̔́ ᾱ̓̀ ᾱ̔̀ ῑ ῑ́ ῑ̀ ῑ̓ ῑ̔ ῑ̓́ ῑ̔́ ῑ̓̀ ῑ̔̀ ῡ ῡ́ ῡ̀ ῡ̓ ῡ̔ ῡ̓́ ῡ̔́ ῡ̓̀ ῡ̔̀}
+
+\section*{Every sequence}
+
+Three long vowels, each with the nine breathing-and-accent combinations the
+README lists. The macron comes from the base codepoint; everything after it in
+the column below is a combining mark stacked on top.
+
+\subsection*{alpha U+1FB1}
+\begin{tabular}{ccccccccc}
+\toprule
+bare & acute & grave & smooth & rough & sm+ac & ro+ac & sm+gr & ro+gr \\
+\midrule
+\cell{ᾱ}{1FB1} & \cell{ᾱ́}{1FB1\\0301} & \cell{ᾱ̀}{1FB1\\0300} &
+\cell{ᾱ̓}{1FB1\\0313} & \cell{ᾱ̔}{1FB1\\0314} &
+\cell{ᾱ̓́}{1FB1\\0313\\0301} & \cell{ᾱ̔́}{1FB1\\0314\\0301} &
+\cell{ᾱ̓̀}{1FB1\\0313\\0300} & \cell{ᾱ̔̀}{1FB1\\0314\\0300} \\
+\bottomrule
+\end{tabular}
+
+\subsection*{iota U+1FD1}
+\begin{tabular}{ccccccccc}
+\toprule
+bare & acute & grave & smooth & rough & sm+ac & ro+ac & sm+gr & ro+gr \\
+\midrule
+\cell{ῑ}{1FD1} & \cell{ῑ́}{1FD1\\0301} & \cell{ῑ̀}{1FD1\\0300} &
+\cell{ῑ̓}{1FD1\\0313} & \cell{ῑ̔}{1FD1\\0314} &
+\cell{ῑ̓́}{1FD1\\0313\\0301} & \cell{ῑ̔́}{1FD1\\0314\\0301} &
+\cell{ῑ̓̀}{1FD1\\0313\\0300} & \cell{ῑ̔̀}{1FD1\\0314\\0300} \\
+\bottomrule
+\end{tabular}
+
+\subsection*{upsilon U+1FE1}
+\begin{tabular}{ccccccccc}
+\toprule
+bare & acute & grave & smooth & rough & sm+ac & ro+ac & sm+gr & ro+gr \\
+\midrule
+\cell{ῡ}{1FE1} & \cell{ῡ́}{1FE1\\0301} & \cell{ῡ̀}{1FE1\\0300} &
+\cell{ῡ̓}{1FE1\\0313} & \cell{ῡ̔}{1FE1\\0314} &
+\cell{ῡ̓́}{1FE1\\0313\\0301} & \cell{ῡ̔́}{1FE1\\0314\\0301} &
+\cell{ῡ̓̀}{1FE1\\0313\\0300} & \cell{ῡ̔̀}{1FE1\\0314\\0300} \\
+\bottomrule
+\end{tabular}
+
+\clearpage
+\section*{Marks off, marks on}
+
+The left column is the same text with \texttt{mark} and \texttt{mkmk} disabled,
+so each combining glyph falls at its own zero-width origin. The right column is
+the font doing its job. The distance between them is the anchor work.
+
+\bigskip
+\begin{tabular}{lcc}
+\toprule
+codepoints & marks off & marks on \\
+\midrule
+{\ttfamily\tiny 1FB1 0314 0301} & {\glyphsize\libnomarks\strut ᾱ̔́} & {\glyphsize\strut ᾱ̔́} \\[1.5ex]
+{\ttfamily\tiny 1FD1 0313 0300} & {\glyphsize\libnomarks\strut ῑ̓̀} & {\glyphsize\strut ῑ̓̀} \\[1.5ex]
+{\ttfamily\tiny 1FE1 0314 0300} & {\glyphsize\libnomarks\strut ῡ̔̀} & {\glyphsize\strut ῡ̔̀} \\[1.5ex]
+{\ttfamily\tiny 1FB1 0313 0301} & {\glyphsize\libnomarks\strut ᾱ̓́} & {\glyphsize\strut ᾱ̓́} \\
+\bottomrule
+\end{tabular}
+
+\ifharfbuzz
+\section*{Node renderer against HarfBuzz}
+
+LuaTeX's own shaper and HarfBuzz resolve mark attachment separately. If these
+two lines differ, the font is relying on something one of them does not
+implement.
+
+\bigskip
+{\fontsize{17}{40}\selectfont ᾱ ᾱ́ ᾱ̀ ᾱ̓ ᾱ̔ ᾱ̓́ ᾱ̔́ ᾱ̓̀ ᾱ̔̀ ῑ ῑ́ ῑ̀ ῑ̓ ῑ̔ ῑ̓́ ῑ̔́ ῑ̓̀ ῑ̔̀ ῡ ῡ́ ῡ̀ ῡ̓ ῡ̔ ῡ̓́ ῡ̔́ ῡ̓̀ ῡ̔̀}
+
+{\libhb\fontsize{17}{40}\selectfont ᾱ ᾱ́ ᾱ̀ ᾱ̓ ᾱ̔ ᾱ̓́ ᾱ̔́ ᾱ̓̀ ᾱ̔̀ ῑ ῑ́ ῑ̀ ῑ̓ ῑ̔ ῑ̓́ ῑ̔́ ῑ̓̀ ῑ̔̀ ῡ ῡ́ ῡ̀ ῡ̓ ῡ̔ ῡ̓́ ῡ̔́ ῡ̓̀ ῡ̔̀}
+\fi
+
+\clearpage
+\section*{At size}
+
+The four deepest stacks, grown until any drift in the anchors shows.
+
+\bigskip
+\begin{tabular}{ll}
+{\ttfamily\tiny 10pt} & {\fontsize{10}{14}\selectfont ᾱ̔́ ῑ̓̀ ῡ̔̀ ᾱ̓́} \\[1ex]
+{\ttfamily\tiny 14pt} & {\fontsize{14}{18}\selectfont ᾱ̔́ ῑ̓̀ ῡ̔̀ ᾱ̓́} \\[1ex]
+{\ttfamily\tiny 20pt} & {\fontsize{20}{26}\selectfont ᾱ̔́ ῑ̓̀ ῡ̔̀ ᾱ̓́} \\[1ex]
+{\ttfamily\tiny 28pt} & {\fontsize{28}{36}\selectfont ᾱ̔́ ῑ̓̀ ῡ̔̀ ᾱ̓́} \\[1ex]
+{\ttfamily\tiny 40pt} & {\fontsize{40}{50}\selectfont ᾱ̔́ ῑ̓̀ ῡ̔̀ ᾱ̓́} \\[1ex]
+{\ttfamily\tiny 58pt} & {\fontsize{58}{70}\selectfont ᾱ̔́ ῑ̓̀ ῡ̔̀ ᾱ̓́} \\
+\end{tabular}
+
+\vfill
+\iflocalfonts
+Font files taken from \texttt{\LibPath} in this working tree.
+\else
+No local build found; an installed Libertinus was used.
+\fi
+
+\end{document}

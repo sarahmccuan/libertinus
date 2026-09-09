@@ -1,0 +1,150 @@
+# Proof sheet for the adscript iota on Greek capitals in Libertinus.
+#
+#   python tools/proof.py -i build/LibertinusSerif-Regular.otf \
+#       -p tools/proofs/greek-adscript.txt -o build/proof
+#   python tools/proof_matrix.py -p tools/proofs/greek-adscript.txt \
+#       -o build/proof/matrix-adscript.png
+#
+# '##' starts a section, '#' is a comment, a trailing tab + '#' annotates a cell.
+# Every sample is labelled with its codepoints in the sheet, so you can always
+# tell exactly which sequence produced a given picture.
+#
+# Greek writes the iota under a lowercase vowel and BESIDE a capital, which is
+# what prosgegrammeni and ypogegrammeni name. Unicode encoded that pairing only
+# where it also encoded the accents, so every sequence below the first section
+# is a capital plus a COMBINING U+0345 that no single character exists for --
+# which is exactly the set greek_anchors has to place by extrapolation, and the
+# set the other proof files miss. greek-all.txt reaches an adscript capital only
+# through the precomposed forms, so a wrong extrapolation is invisible there.
+#
+# What to look for: the iota sits beside the letter, clear of its ink, with the
+# same gap the precomposed forms in the first section set. An iota touching or
+# inside the letterform is the failure this sheet exists to catch.
+#
+# The archaic capitals at the end flag red on two faces, on purpose. Sans Bold
+# has none of them and Serif Bold Italic has none of the thirteen, so those
+# cells report a letter that is missing outright rather than an iota that is
+# misplaced. That is a different gap from the one this sheet hunts, and it is
+# here because a hole you can see beats a sheet that looks clean by leaving it
+# out. Red down those two columns in the last section is the known state; red
+# anywhere else is new.
+
+
+## Control: the three pairings Unicode encoded
+# These compose to U+1FBC, U+1FCC and U+1FFC, which the face draws itself.
+# They set the gap every other sample here is measured against.
+ᾼ	# -> U+1FBC
+ῌ	# -> U+1FCC
+ῼ	# -> U+1FFC
+
+## Control: the accented pairings Unicode encoded
+# Also precomposed -- U+1F88 and its siblings -- so also drawn, not placed.
+ᾉ	# -> U+1F89
+ᾍ	# -> U+1F8D
+ᾙ	# -> U+1F99
+ᾭ	# -> U+1FAD
+
+## Vowels with no encoded pairing
+# Orthographic Greek reaches these through iota, upsilon and omicron rarely,
+# but epsilon and omicron take one in inscriptions and in reconstructions.
+Εͅ	# epsilon
+Ιͅ	# iota
+Οͅ	# omicron
+Υͅ	# upsilon
+
+## Macron and vrachy -- the stack this work exists for
+# A capital carrying a length mark AND an iota. No character encodes it, and
+# scholarly Greek wants all of them.
+Ᾱͅ	# alpha macron
+Ᾰͅ	# alpha vrachy
+Ῑͅ	# iota macron
+Ῐͅ	# iota vrachy
+Ῡͅ	# upsilon macron
+Ῠͅ	# upsilon vrachy
+
+## Accents
+Άͅ	# alpha tonos
+Έͅ	# epsilon tonos
+Ήͅ	# eta tonos
+Ίͅ	# iota tonos
+Όͅ	# omicron tonos
+Ύͅ	# upsilon tonos
+Ώͅ	# omega tonos
+Ὰͅ	# alpha varia
+Ὲͅ	# epsilon varia
+Ὴͅ	# eta varia
+Ὶͅ	# iota varia
+Ὸͅ	# omicron varia
+Ὺͅ	# upsilon varia
+Ὼͅ	# omega varia
+
+## Dialytika
+# The accent goes off the shoulder and the iota beside; neither should move
+# the other.
+Ϊͅ	# iota dialytika
+Ϋͅ	# upsilon dialytika
+ϔͅ	# upsilon hook dialytika -- absent from Serif Bold Italic
+
+## Breathings
+ᾈ	# alpha psili
+Ἐͅ	# epsilon psili
+ᾘ	# eta psili
+Ἰͅ	# iota psili
+Ὀͅ	# omicron psili
+ᾨ	# omega psili
+Ἑͅ	# epsilon dasia
+Ἱͅ	# iota dasia
+Ὁͅ	# omicron dasia
+Ὑͅ	# upsilon dasia
+Ῥͅ	# rho dasia
+
+## Breathing and accent -- the three-high stack beside an iota
+Ἒͅ	# epsilon psili varia
+Ἔͅ	# epsilon psili oxia
+Ἲͅ	# iota psili varia
+Ἴͅ	# iota psili oxia
+Ἶͅ	# iota psili perispomeni
+Ἷͅ	# iota dasia perispomeni
+Ὂͅ	# omicron psili varia
+Ὄͅ	# omicron psili oxia
+Ὓͅ	# upsilon dasia varia
+Ὕͅ	# upsilon dasia oxia
+Ὗͅ	# upsilon dasia perispomeni
+
+## Consonants
+# Not orthographic. Here because the extrapolation is per letter and a wide
+# or open-sided capital is where a wrong gap shows first.
+Βͅ	# beta
+Γͅ	# gamma
+Δͅ	# delta
+Ζͅ	# zeta
+Θͅ	# theta
+Κͅ	# kappa
+Λͅ	# lamda
+Μͅ	# mu
+Νͅ	# nu
+Ξͅ	# xi
+Πͅ	# pi
+Ρͅ	# rho
+Σͅ	# sigma
+Τͅ	# tau
+Φͅ	# phi
+Χͅ	# chi
+Ψͅ	# psi
+
+## Archaic letters and symbol forms -- expected to flag on two faces
+# The letters no keyboard sends and every enumeration reaches anyway. Sans
+# Bold draws none of these and Serif Bold Italic draws none of them either,
+# so both columns come back red here and only here. See the header.
+ϒͅ	# upsilon with hook
+ϓͅ	# upsilon with acute and hook
+Ϙͅ	# letter archaic koppa
+Ϛͅ	# letter stigma
+Ϝͅ	# letter digamma
+Ϟͅ	# letter koppa
+Ϡͅ	# letter sampi
+ϴͅ	# capital theta
+Ϲͅ	# capital lunate sigma
+Ͻͅ	# capital reversed lunate sigma
+Ͼͅ	# capital dotted lunate sigma
+Ͽͅ	# capital reversed dotted lunate sigma
