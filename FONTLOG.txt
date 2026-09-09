@@ -45,7 +45,7 @@ https://github.com/alerque/libertinus
 ChangeLog
 ---------
 
-unreleased (GIT) <Libertinus> Version HEAD
+8 September 2026 (Sarah McCuan) <Libertinus> Version 7.055
 - Normalise a Greek cluster in the font: every precomposed letter is taken
   apart, its marks are sorted into Unicode's canonical order and the sequence is
   composed again, so a vowel and its diacritics render the same whatever order
