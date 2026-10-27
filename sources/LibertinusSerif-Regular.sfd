@@ -303,7 +303,7 @@ Grid
  -128.333984375 624.634765625 l 1025
 EndSplineSet
 AnchorClass2: "hbsmall" "'mark' Hebrew Mark positioning-subtable" "hbwide" "'mark' Hebrew Mark positioning-subtable" "hbmiddle" "'mark' Hebrew Mark positioning-subtable" "holem" "'mark' Hebrew Mark positioning-subtable" "ganuv" "'mark' Hebrew Mark positioning-subtable" "qubuts" "'mark' Hebrew Mark positioning-subtable" "dagesh" "'mark' Hebrew Mark positioning-subtable" "aboveMark" "'mkmk' Mark to Mark-1" "right" "'mark' Right" "komb_OR" "'mark' Komb OR" "above" "'mark' Above" "below" "'mark' Below" "cedilla" "'mark' Cedilla" "ogonek" "'mark' Ogonek" "middle" "'mark' Middle"
-BeginChars: 64298 2731
+BeginChars: 64298 2732
 
 StartChar: exclam
 Encoding: 1 33 0
@@ -75380,6 +75380,31 @@ LayerCount: 2
 Fore
 Refer: 2074 1465 N 1 0 0 1 324 0 2
 Refer: 2084 1488 N 1 0 0 1 0 0 2
+EndChar
+StartChar: uni21A9
+Encoding: 8617 8617 2731
+Width: 912
+GlyphClass: 2
+Flags: MW
+LayerCount: 2
+Fore
+SplineSet
+732 495 m 1
+ 804 495 862 437 862 365 c 0
+ 862 293 804 235 732 235 c 2
+ 196 235 l 1
+ 228 204 277 150 307 78 c 1
+ 301 72 275 72 269 78 c 0
+ 183 175 102 231 53 248 c 0
+ 49 252 49 268 53 272 c 0
+ 102 289 183 345 269 442 c 0
+ 275 448 301 448 307 442 c 1
+ 277 370 228 316 196 285 c 1
+ 732 285 l 2
+ 776 285 812 321 812 365 c 0
+ 812 409 776 445 732 445 c 1
+ 723 454 723 486 732 495 c 1
+EndSplineSet
 EndChar
 EndChars
 EndSplineFont
